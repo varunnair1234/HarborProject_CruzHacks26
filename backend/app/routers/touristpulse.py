@@ -7,6 +7,8 @@ import httpx
 import json
 import csv
 import os
+import asyncio
+import re
 from typing import List, Dict, Any
 
 from app.db.session import get_db
@@ -348,41 +350,93 @@ Additional constraints:
 </InputSignals>
 """
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {openrouter_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek/deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": "Return ONLY valid JSON. No markdown. No extra text."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 260,
-                },
-            )
-            response.raise_for_status()
+        # Retry logic: try up to 3 times with exponential backoff
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=45.0) as client:  # Increased timeout
+                    response = await client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {openrouter_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": "deepseek/deepseek-chat",
+                            "messages": [
+                                {"role": "system", "content": "Return ONLY valid JSON. No markdown. No extra text."},
+                                {"role": "user", "content": prompt},
+                            ],
+                            "temperature": 0.3,
+                            "max_tokens": 260,
+                        },
+                    )
+                    response.raise_for_status()
 
-        result = response.json()
-        content = result["choices"][0]["message"]["content"].strip()
+                result = response.json()
+                content = result["choices"][0]["message"]["content"].strip()
 
-        try:
-            raw = json.loads(content)
-        except Exception:
-            # Handle occasional fences
-            if "```" in content:
-                content = content.split("```", 1)[1]
-                content = content.split("```", 1)[0].strip()
-            raw = json.loads(content)
+                # Try to parse JSON with multiple strategies
+                raw = None
+                try:
+                    raw = json.loads(content)
+                except json.JSONDecodeError:
+                    # Strategy 1: Remove markdown code fences
+                    if "```json" in content:
+                        content = content.split("```json", 1)[1].split("```", 1)[0].strip()
+                    elif "```" in content:
+                        content = content.split("```", 1)[1].split("```", 1)[0].strip()
+                    
+                    # Strategy 2: Try to extract JSON object
+                    try:
+                        raw = json.loads(content)
+                    except json.JSONDecodeError:
+                        # Strategy 3: Find JSON object in text
+                        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', content, re.DOTALL)
+                        if json_match:
+                            raw = json.loads(json_match.group(0))
+                        else:
+                            raise ValueError(f"Could not parse JSON from LLM response: {content[:200]}")
 
-        return _normalize_llm_output(raw)
+                if raw:
+                    return _normalize_llm_output(raw)
+                    
+            except httpx.TimeoutException as e:
+                last_error = f"Timeout (attempt {attempt + 1}/{max_retries})"
+                logger.warning("LLM API timeout for %s: %s", date_str, last_error)
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                    continue
+            except httpx.HTTPStatusError as e:
+                last_error = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+                logger.warning("LLM API HTTP error for %s: %s", date_str, last_error)
+                # Don't retry on 4xx errors (client errors)
+                if 400 <= e.response.status_code < 500:
+                    break
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+            except json.JSONDecodeError as e:
+                last_error = f"JSON parse error: {str(e)}"
+                logger.warning("LLM JSON parse error for %s: %s", date_str, last_error)
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1)
+                    continue
+            except Exception as e:
+                last_error = f"{type(e).__name__}: {str(e)}"
+                logger.warning("LLM API error for %s (attempt %d/%d): %s", date_str, attempt + 1, max_retries, last_error)
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+
+        # All retries failed
+        logger.error("LLM prediction failed for %s after %d attempts. Last error: %s", date_str, max_retries, last_error)
+        return {"level": "normal", "factor": 1.0, "reasoning": "Unable to generate prediction", "confidence": 0.5}
 
     except Exception as e:
-        logger.error("LLM prediction failed: %s", e, exc_info=True)
+        logger.error("LLM prediction failed for %s: %s", date_str, e, exc_info=True)
         return {"level": "normal", "factor": 1.0, "reasoning": "Unable to generate prediction", "confidence": 0.5}
 
 
