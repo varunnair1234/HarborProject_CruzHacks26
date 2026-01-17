@@ -958,11 +958,11 @@
         <div id="main-app" style="display: none;">
             <!-- Tabs -->
             <div class="tabs">
-                <button class="tab-button active" data-tab="touristpulse">TouristPulse</button>
-                <button class="tab-button" data-tab="cashflow">CashFlow Calm</button>
-                <button class="tab-button" data-tab="rentguard">RentGuard</button>
-                <button class="tab-button" data-tab="shopline">Shopline</button>
-                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+                <button class="tab-button" data-tab="touristpulse" style="display: none;">TouristPulse</button>
+                <button class="tab-button" data-tab="cashflow" style="display: none;">CashFlow Calm</button>
+                <button class="tab-button" data-tab="rentguard" style="display: none;">RentGuard</button>
+                <button class="tab-button active" data-tab="shopline">Shopline</button>
+                <button class="logout-btn" onclick="handleLogout()" style="display: none;">Logout</button>
             </div>
 
         <!-- TouristPulse Tab -->
@@ -1162,6 +1162,161 @@
         // Backend URL - change to localhost:8000 for local development
         const BACKEND_URL = 'https://harborproject-cruzhacks26.onrender.com';
         const LOCATION = 'Santa Cruz';
+
+        // ===== Auth State Management =====
+        function getAuthToken() {
+            return localStorage.getItem('auth_token');
+        }
+
+        function setAuthToken(token) {
+            localStorage.setItem('auth_token', token);
+        }
+
+        function removeAuthToken() {
+            localStorage.removeItem('auth_token');
+        }
+
+        function isAuthenticated() {
+            return !!getAuthToken();
+        }
+
+        function getAuthHeaders() {
+            const token = getAuthToken();
+            if (!token) return {};
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        // Check auth on page load
+        function checkAuth() {
+            if (isAuthenticated()) {
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                // Show all tabs for authenticated users
+                document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = '');
+            } else {
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('main-app').style.display = 'block'; // Show main app but only Shopline tab
+                // Hide protected tabs, show only Shopline
+                document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = 'none');
+                showTab('shopline');
+            }
+        }
+
+        // Auth form switching
+        function showAuthForm(formType) {
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+            
+            if (formType === 'login') {
+                document.querySelector('.auth-tab:first-child').classList.add('active');
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:last-child').classList.add('active');
+                document.getElementById('signup-form').classList.add('active');
+            }
+            
+            document.getElementById('auth-error').style.display = 'none';
+            document.getElementById('auth-success').style.display = 'none';
+        }
+
+        // Handle login
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('auth-error');
+            const successEl = document.getElementById('auth-success');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Login failed');
+                }
+
+                const data = await response.json();
+                setAuthToken(data.access_token);
+                successEl.textContent = 'Login successful!';
+                successEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                
+                setTimeout(() => {
+                    checkAuth();
+                }, 500);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+                successEl.style.display = 'none';
+            }
+        }
+
+        // Handle signup
+        async function handleSignup(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const businessName = document.getElementById('signup-business-name').value;
+            const address = document.getElementById('signup-address').value;
+            const businessType = document.getElementById('signup-business-type').value;
+            const password = document.getElementById('signup-password').value;
+            const errorEl = document.getElementById('auth-error');
+            const successEl = document.getElementById('auth-success');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        business_name: businessName,
+                        address,
+                        business_type: businessType,
+                        password
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Signup failed');
+                }
+
+                successEl.textContent = 'Account created! Please login.';
+                successEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                
+                // Switch to login form
+                setTimeout(() => {
+                    showAuthForm('login');
+                    document.getElementById('login-email').value = email;
+                }, 1000);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+                successEl.style.display = 'none';
+            }
+        }
+
+        // Handle logout
+        function handleLogout() {
+            removeAuthToken();
+            checkAuth();
+        }
+
+        // Initialize auth check on page load
+        checkAuth();
 
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
