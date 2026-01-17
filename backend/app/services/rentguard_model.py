@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import csv
@@ -43,7 +42,6 @@ def _least_squares_fit(xs: List[float], ys: List[float]) -> Tuple[float, float]:
     num = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
     den = sum((x - x_mean) ** 2 for x in xs)
     if den == 0:
-        # All x identical
         return 0.0, y_mean
 
     a = num / den
@@ -77,15 +75,10 @@ def _discover_csv_path() -> Optional[Path]:
     backend_dir = Path(__file__).resolve().parents[2]
 
     candidates = [
-        # Preferred baseline files (your confirmed source)
         backend_dir / "santa_cruz_avg_rent&increase.csv",
         backend_dir / "santa_cruz_avgrent&increase.csv",
-
-        # If you later move it under backend/data/
         backend_dir / "data" / "santa_cruz_avg_rent&increase.csv",
         backend_dir / "data" / "santa_cruz_avgrent&increase.csv",
-
-        # Optional legacy / alternative baselines
         backend_dir / "data" / "santa_cruz_land_prices.csv",
         backend_dir / "data" / "santa_cruz_land_equivalent.csv",
     ]
@@ -97,10 +90,14 @@ def _discover_csv_path() -> Optional[Path]:
 
 
 def _parse_csv(path: Path) -> Tuple[List[int], List[float], List[float], str]:
-    """Parse CSV into (years, target_values, yoy_pct, target_column_name)."""
-    years: List[int] = []
-    values: List[float] = []
-    yoy: List[float] = []
+    """
+    Parse CSV into (years_sorted, target_values_sorted, yoy_pct_sorted, target_column_name).
+
+    Notes:
+    - If a YoY column exists but is incomplete/messy, we still compute YoY from sorted values.
+    - Returned yoy list is (len(years)-1) values aligned to consecutive years in the sorted series.
+    """
+    rows: List[Tuple[int, float, Optional[float]]] = []
 
     with path.open("r", newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -110,10 +107,8 @@ def _parse_csv(path: Path) -> Tuple[List[int], List[float], List[float], str]:
         headers = {_normalize_header(h): h for h in reader.fieldnames}
 
         year_col = headers.get("year")
-        # Allow deriving year from date-like column if needed
         date_col = headers.get("date") or headers.get("event_date") or headers.get("start_date") or headers.get("start")
 
-        # Flexible target column names
         target_col = (
             headers.get("avg_land_price_usd")
             or headers.get("avg_land_price")
@@ -132,31 +127,24 @@ def _parse_csv(path: Path) -> Tuple[List[int], List[float], List[float], str]:
                 f"Got: {reader.fieldnames}"
             )
         if not year_col and not date_col:
-            raise ValueError(
-                f"CSV missing 'year' and no date-like column to derive year. Got: {reader.fieldnames}"
-            )
+            raise ValueError(f"CSV missing 'year' and no date-like column to derive year. Got: {reader.fieldnames}")
 
         for row in reader:
-            # Determine year
-            y_raw = row.get(year_col) if year_col else None
+            # Year
             year_val: Optional[int] = None
+            if year_col:
+                y_raw = row.get(year_col)
+                if y_raw is not None and str(y_raw).strip() != "":
+                    try:
+                        year_val = int(float(str(y_raw).strip()))
+                    except Exception:
+                        year_val = None
 
-            if y_raw is not None and str(y_raw).strip() != "":
-                try:
-                    year_val = int(float(str(y_raw).strip()))
-                except Exception:
-                    year_val = None
-            elif date_col:
+            if year_val is None and date_col:
                 d_raw = row.get(date_col)
                 if d_raw is not None and str(d_raw).strip() != "":
                     d_str = str(d_raw).strip()
-                    for fmt in (
-                        "%Y-%m-%d",
-                        "%m/%d/%Y",
-                        "%Y/%m/%d",
-                        "%Y-%m-%dT%H:%M:%S",
-                        "%Y-%m-%d %H:%M:%S",
-                    ):
+                    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
                         try:
                             year_val = datetime.strptime(d_str[:19], fmt).year
                             break
@@ -168,43 +156,45 @@ def _parse_csv(path: Path) -> Tuple[List[int], List[float], List[float], str]:
             if year_val is None:
                 continue
 
-            # Determine target value
+            # Target value
             v_raw = row.get(target_col)
             if v_raw is None or str(v_raw).strip() == "":
                 continue
-
             try:
                 v = float(str(v_raw).strip())
             except Exception:
                 continue
 
-            years.append(int(year_val))
-            values.append(float(v))
-
+            # Optional YoY
+            yoy_val: Optional[float] = None
             if yoy_col:
                 yoy_raw = row.get(yoy_col)
                 if yoy_raw is not None and str(yoy_raw).strip() != "":
                     try:
-                        yoy.append(float(str(yoy_raw).strip()))
+                        yoy_val = float(str(yoy_raw).strip())
                     except Exception:
-                        pass
+                        yoy_val = None
 
-    if len(years) < 2:
+            rows.append((int(year_val), float(v), yoy_val))
+
+    if len(rows) < 2:
         raise ValueError(f"Not enough usable data rows in CSV: {path}")
 
-    # If YoY isn't provided, compute it from year-sorted values
-    if not yoy and len(values) >= 2:
-        pairs = sorted(zip(years, values), key=lambda t: t[0])
-        years_sorted = [p[0] for p in pairs]
-        values_sorted = [p[1] for p in pairs]
-        yoy_vals: List[float] = []
-        for i in range(1, len(values_sorted)):
-            prev = values_sorted[i - 1]
-            cur = values_sorted[i]
-            yoy_vals.append(((cur - prev) / prev) * 100.0 if prev > 0 else 0.0)
-        return years_sorted, values_sorted, yoy_vals, headers.get(_normalize_header(target_col), target_col)
+    # Sort by year
+    rows_sorted = sorted(rows, key=lambda t: t[0])
+    years_sorted = [r[0] for r in rows_sorted]
+    values_sorted = [r[1] for r in rows_sorted]
 
-    return years, values, yoy, target_col
+    # Prefer computing YoY from values for alignment stability
+    yoy_computed: List[float] = []
+    for i in range(1, len(values_sorted)):
+        prev = values_sorted[i - 1]
+        cur = values_sorted[i]
+        yoy_computed.append(((cur - prev) / prev) * 100.0 if prev > 0 else 0.0)
+
+    # For metadata/debugging, return the original header name (not normalized)
+    target_col_name = headers.get(_normalize_header(target_col), target_col)
+    return years_sorted, values_sorted, yoy_computed, target_col_name
 
 
 def _build_baseline() -> RentGuardBaseline:
@@ -213,11 +203,9 @@ def _build_baseline() -> RentGuardBaseline:
     if csv_path:
         try:
             years, values, yoy, target_col = _parse_csv(csv_path)
-            logger.info(f"RentGuard baseline loaded from CSV: {csv_path}")
+            logger.info("RentGuard baseline loaded from CSV: %s", csv_path)
         except Exception as e:
-            logger.warning(
-                f"RentGuard baseline CSV parse failed ({csv_path}); using fallback series. Error: {e}"
-            )
+            logger.warning("RentGuard baseline CSV parse failed (%s); using fallback series. Error: %s", csv_path, e)
             years, values, yoy = _embedded_fallback_series()
             target_col = "fallback_series"
             csv_path = None
@@ -280,11 +268,6 @@ def z_score_for_yoy(observed_yoy_pct: float) -> float:
     if std <= 0:
         return 0.0
     return (float(observed_yoy_pct) - float(mean)) / float(std)
-
-
-def is_using_fallback() -> bool:
-    """True if the model is using the embedded fallback series."""
-    return _BASELINE.source_csv == "embedded_fallback"
 
 
 def is_using_fallback() -> bool:
