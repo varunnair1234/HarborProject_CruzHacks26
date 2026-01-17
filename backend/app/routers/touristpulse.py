@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timedelta
+from datetime import datetime
+from collections import defaultdict
 import logging
 import httpx
 import json
@@ -23,50 +24,109 @@ router = APIRouter(prefix="/touristpulse", tags=["touristpulse"])
 SANTA_CRUZ_LAT = 36.9741
 SANTA_CRUZ_LON = -122.0308
 
-# Open-Meteo forecast_days max
-OPEN_METEO_MAX_DAYS = 16
+# NWS API base URL
+NWS_BASE = "https://api.weather.gov"
+
+# NWS typically provides ~7 days of forecast
+NWS_MAX_DAYS = 7
 
 
 def clamp_days(days: int) -> int:
-    """Clamp days to Open-Meteo allowed range."""
+    """Clamp days to NWS allowed range."""
     if days is None:
         return 7
-    return max(1, min(int(days), OPEN_METEO_MAX_DAYS))
+    return max(1, min(int(days), NWS_MAX_DAYS))
 
 
-async def fetch_weather_data(days: int = 16) -> Dict:
-    """Fetch weather data from Open-Meteo API (max 16 days)."""
-    days = clamp_days(days)
+async def nws_get_json(url: str) -> dict:
+    """Fetch JSON from NWS API with required headers."""
+    headers = {
+        "User-Agent": settings.nws_user_agent if hasattr(settings, "nws_user_agent") else "HarborProject (contact: none)",
+        "Accept": "application/geo+json",
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.get(url, headers=headers)
+        r.raise_for_status()
+        return r.json()
 
-    url = (
-        "https://api.open-meteo.com/v1/forecast"
-        f"?latitude={SANTA_CRUZ_LAT}"
-        f"&longitude={SANTA_CRUZ_LON}"
-        "&hourly=temperature_2m,weathercode,precipitation_probability"
-        "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
-        "&timezone=America%2FLos_Angeles"
-        f"&forecast_days={days}"
-    )
 
+async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
+    """Fetch weather data from NWS API (2-step: points -> forecast)."""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            data = response.json()
-            logger.info(
-                "Successfully fetched weather data: %s days",
-                len(data.get("daily", {}).get("time", [])),
-            )
-            return data
+        # Step 1: Points endpoint -> get forecast URL for this lat/lon
+        points = await nws_get_json(f"{NWS_BASE}/points/{lat},{lon}")
+        forecast_url = points["properties"]["forecast"]
+        logger.info("NWS points resolved to forecast URL: %s", forecast_url)
+
+        # Step 2: Forecast endpoint -> get periods
+        forecast = await nws_get_json(forecast_url)
+        logger.info("Successfully fetched NWS forecast data")
+        return forecast
+
     except httpx.TimeoutException as e:
-        logger.error("Weather API timeout: %s", e)
-        raise HTTPException(status_code=502, detail="Weather API request timed out")
+        logger.error("NWS API timeout: %s", e)
+        raise HTTPException(status_code=502, detail="NWS Weather API request timed out")
     except httpx.HTTPStatusError as e:
-        logger.error("Weather API HTTP error: %s - %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=502, detail=f"Weather API error: {e.response.status_code}")
+        logger.error("NWS API HTTP error: %s - %s", e.response.status_code, e.response.text)
+        raise HTTPException(status_code=502, detail=f"NWS Weather API error: {e.response.status_code}")
+    except KeyError as e:
+        logger.error("NWS API response missing expected field: %s", e)
+        raise HTTPException(status_code=502, detail=f"NWS API response missing field: {e}")
     except Exception as e:
-        logger.error("Failed to fetch weather data: %s", e, exc_info=True)
+        logger.error("Failed to fetch NWS weather data: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
+
+
+def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
+    """Convert NWS forecast periods into daily summaries."""
+    grouped = defaultdict(list)
+    for p in periods:
+        # Parse ISO datetime, handling both Z and offset formats
+        start_time = p["startTime"]
+        if start_time.endswith("Z"):
+            dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        else:
+            dt = datetime.fromisoformat(start_time)
+        d = dt.date()
+        grouped[d].append(p)
+
+    daily = []
+    for d in sorted(grouped.keys())[:days]:
+        ps = grouped[d]
+
+        # Extract temperatures
+        temps = [p["temperature"] for p in ps if isinstance(p.get("temperature"), (int, float))]
+        max_temp = max(temps) if temps else None
+        min_temp = min(temps) if temps else None
+
+        # Extract precipitation probabilities
+        pops = []
+        for p in ps:
+            pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
+            if isinstance(pop, (int, float)):
+                pops.append(pop)
+        max_pop = max(pops) if pops else 0
+
+        # Pick a representative condition: prefer a daytime period if present
+        rep = None
+        for p in ps:
+            if p.get("isDaytime") is True:
+                rep = p
+                break
+        rep = rep or ps[0]
+        condition = rep.get("shortForecast") or rep.get("detailedForecast") or "Unknown"
+
+        daily.append(
+            {
+                "date": d,
+                "temp_max": max_temp,
+                "temp_min": min_temp,
+                "precip_probability": max_pop,
+                "condition": condition,
+            }
+        )
+
+    return daily
 
 
 async def fetch_traffic_data() -> Dict:
@@ -152,23 +212,6 @@ def load_events() -> List[Dict]:
 
     logger.warning("⚠️ No events CSV file found. Predictions will work without event data.")
     return events
-
-
-def get_weather_condition(weathercode: int) -> str:
-    """Convert WMO weather code to a coarse condition string."""
-    if weathercode in (0, 1):
-        return "Clear sky"
-    if 2 <= weathercode <= 3:
-        return "Partly cloudy"
-    if 45 <= weathercode <= 48:
-        return "Fog"
-    if 51 <= weathercode <= 67:
-        return "Rain"
-    if 71 <= weathercode <= 86:
-        return "Snow"
-    if weathercode >= 95:
-        return "Thunderstorm"
-    return "Cloudy"
 
 
 async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, events: List[Dict]) -> Dict:
@@ -259,14 +302,14 @@ Return ONLY valid JSON in exactly this schema:
 @router.get("/outlook", response_model=TouristPulseResponse)
 async def get_tourist_outlook(
     location: str = "Santa Cruz",
-    days: int = Query(16, ge=1, le=365),
+    days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
     """
     Get tourist demand outlook for a location.
 
     Notes:
-    - Open-Meteo supports a maximum of 16 forecast days; requests above that will be clamped.
+    - NWS API typically provides ~7 days of forecast; requests above that will be clamped.
     """
     requested_days = days
     days = clamp_days(days)
@@ -274,42 +317,34 @@ async def get_tourist_outlook(
     logger.info("Tourist outlook requested for %s, requested=%s days (clamped=%s)", location, requested_days, days)
 
     try:
-        weather_data = await fetch_weather_data(days)
+        # Fetch data from NWS API
+        forecast = await fetch_weather_data_nws(SANTA_CRUZ_LAT, SANTA_CRUZ_LON)
         traffic_data = await fetch_traffic_data()
         events = load_events()
 
-        daily = weather_data.get("daily") or {}
-        daily_times: List[str] = daily.get("time") or []
+        # Convert NWS periods to daily format
+        periods = forecast["properties"]["periods"]
+        daily_forecast = nws_periods_to_daily(periods, days)
 
-        if not daily_times:
-            raise HTTPException(status_code=502, detail="Weather API returned no daily forecast data")
+        if not daily_forecast:
+            raise HTTPException(status_code=502, detail="NWS API returned no forecast data")
 
-        start_date = date.today()
         outlook: List[TouristPulseOutlook] = []
 
-        # iterate by index (safer/faster than .index lookups)
-        for i in range(min(days, len(daily_times))):
-            current_date = start_date + timedelta(days=i)
+        for item in daily_forecast:
+            current_date = item["date"]
             date_str = current_date.isoformat()
-
-            try:
-                weathercode = daily["weathercode"][i]
-                temp_max = daily["temperature_2m_max"][i]
-                temp_min = daily["temperature_2m_min"][i]
-                precip_prob = (daily.get("precipitation_probability_max") or [0] * len(daily_times))[i]
-            except Exception:
-                continue
 
             day_events = [e for e in events if e.get("date") == date_str]
 
-            weather_condition = get_weather_condition(int(weathercode))
+            weather_condition = item["condition"]
             prediction = await call_llm_for_prediction(
                 date_str,
                 {
                     "condition": weather_condition,
-                    "temp_max": temp_max,
-                    "temp_min": temp_min,
-                    "precipitation_probability": precip_prob,
+                    "temp_max": item["temp_max"],
+                    "temp_min": item["temp_min"],
+                    "precipitation_probability": item["precip_probability"],
                 },
                 traffic_data,
                 day_events,

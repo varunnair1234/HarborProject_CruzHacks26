@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     environment: str = "development"
 
+    # NWS Weather API
+    nws_user_agent: str = "HarborProject_CruzHacks26 (contact: youremail@example.com)"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
