@@ -6,6 +6,17 @@ from typing import Generator
 from app.core.config import settings
 from app.db.models import Base
 
+# Import all models to ensure they're registered with Base
+from app.db.models import (  # noqa: F401
+    Analysis,
+    DailyRevenue,
+    FixedCost,
+    RentScenario,
+    LLMOutput,
+    ExternalCache,
+    Business
+)
+
 
 # Create engine based on database URL
 if settings.database_url.startswith("sqlite"):

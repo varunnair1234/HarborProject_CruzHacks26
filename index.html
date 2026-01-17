@@ -1244,8 +1244,14 @@
                 });
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Login failed');
+                    let errorMessage = 'Login failed';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
@@ -1289,8 +1295,14 @@
                 });
 
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Signup failed');
+                    let errorMessage = 'Signup failed';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 successEl.textContent = 'Account created! Please login.';
