@@ -543,6 +543,11 @@ async def get_tourist_outlook(
 
         outlook: List[TouristPulseOutlook] = []
 
+        # Debug: log forecast dates
+        forecast_dates = [item["date"] for item in daily_forecast]
+        logger.info("Forecast dates being processed: %s", [str(d) for d in forecast_dates])
+        logger.info("Today is: %s", date.today())
+
         # Debug: log all loaded events and their dates
         logger.info("Total events loaded: %d", len(events))
         event_dates_summary = {}
