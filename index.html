@@ -1294,7 +1294,28 @@
                     })
                 });
 
-                if (!response.ok) {
+                // Check if response is ok (status 200-299)
+                if (response.ok) {
+                    // Parse response to ensure it's valid JSON
+                    try {
+                        const data = await response.json();
+                        console.log('Signup successful:', data);
+                    } catch (e) {
+                        // If response is empty or not JSON, that's still OK for 201 Created
+                        console.log('Signup successful (no response body)');
+                    }
+
+                    successEl.textContent = 'Account created! Please login.';
+                    successEl.style.display = 'block';
+                    errorEl.style.display = 'none';
+                    
+                    // Switch to login form
+                    setTimeout(() => {
+                        showAuthForm('login');
+                        document.getElementById('login-email').value = email;
+                    }, 1000);
+                } else {
+                    // Handle error response
                     let errorMessage = 'Signup failed';
                     try {
                         const error = await response.json();
@@ -1304,18 +1325,14 @@
                     }
                     throw new Error(errorMessage);
                 }
-
-                successEl.textContent = 'Account created! Please login.';
-                successEl.style.display = 'block';
-                errorEl.style.display = 'none';
-                
-                // Switch to login form
-                setTimeout(() => {
-                    showAuthForm('login');
-                    document.getElementById('login-email').value = email;
-                }, 1000);
             } catch (err) {
-                errorEl.textContent = err.message;
+                console.error('Signup error:', err);
+                // Check if it's a network error
+                if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+                    errorEl.textContent = 'Network error. The account may have been created. Please try logging in.';
+                } else {
+                    errorEl.textContent = err.message || 'Signup failed. Please try again.';
+                }
                 errorEl.style.display = 'block';
                 successEl.style.display = 'none';
             }
