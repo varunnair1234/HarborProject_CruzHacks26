@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harbor - TouristPulse</title>
+    <title>Harbor - Small Business Operating System</title>
     <style>
         * {
             box-sizing: border-box;
@@ -30,13 +30,55 @@
             font-size: 2.5rem;
             color: #0A4D68;
             margin-bottom: 0.5rem;
+            text-align: center;
         }
 
         .subtitle {
             color: #666;
             margin-bottom: 2rem;
+            text-align: center;
         }
 
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0;
+        }
+
+        .tab-button {
+            padding: 1rem 2rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab-button:hover {
+            color: #0A4D68;
+            background: #f3f4f6;
+        }
+
+        .tab-button.active {
+            color: #0A4D68;
+            border-bottom-color: #0A4D68;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* TouristPulse Styles */
         .loading {
             text-align: center;
             padding: 3rem;
@@ -156,25 +198,92 @@
             padding: 3rem;
             color: #666;
         }
+
+        /* Module Placeholder Styles */
+        .module-placeholder {
+            background: white;
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .module-placeholder h2 {
+            color: #0A4D68;
+            margin-bottom: 1rem;
+        }
+
+        .module-placeholder p {
+            color: #666;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Harbor - TouristPulse</h1>
-        <p class="subtitle">30-Day Tourism Forecast for Santa Cruz</p>
+        <h1>Harbor</h1>
+        <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
         
-        <div id="loading" class="loading">Loading tourism predictions...</div>
-        <div id="error" class="error" style="display: none;"></div>
-        <div id="outlook" class="outlook-grid" style="display: none;"></div>
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('touristpulse')">TouristPulse</button>
+            <button class="tab-button" onclick="showTab('cashflow')">CashFlow Calm</button>
+            <button class="tab-button" onclick="showTab('rentguard')">RentGuard</button>
+        </div>
+
+        <!-- TouristPulse Tab -->
+        <div id="touristpulse" class="tab-content active">
+            <h2 style="margin-bottom: 1rem;">30-Day Tourism Forecast for Santa Cruz</h2>
+            <div id="loading" class="loading">Loading tourism predictions...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="outlook" class="outlook-grid" style="display: none;"></div>
+        </div>
+
+        <!-- CashFlow Calm Tab -->
+        <div id="cashflow" class="tab-content">
+            <div class="module-placeholder">
+                <h2>CashFlow Calm</h2>
+                <p>Financial early-warning system with cash runway projections.</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
+                    This module is being developed. Upload POS data to analyze your cash flow and get 30/60/90-day runway projections.
+                </p>
+            </div>
+        </div>
+
+        <!-- RentGuard Tab -->
+        <div id="rentguard" class="tab-content">
+            <div class="module-placeholder">
+                <h2>RentGuard</h2>
+                <p>Rent fairness analysis and leverage calculator.</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
+                    This module is being developed. Analyze your rent increases and compare them to neighborhood averages.
+                </p>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Backend URL - update this to your backend URL
+        // Backend URL
         const BACKEND_URL = 'https://harborproject-cruzhacks26.onrender.com';
         const LOCATION = 'Santa Cruz';
         const DAYS = 30;
 
-        // Get level label
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // TouristPulse functions
         function getLevelLabel(level) {
             const labels = {
                 'low': 'LOW',
@@ -185,12 +294,10 @@
             return labels[level] || level.toUpperCase();
         }
 
-        // Get level class
         function getLevelClass(level) {
             return level === 'very_high' ? 'very_high' : level;
         }
 
-        // Format date
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', {
@@ -200,7 +307,6 @@
             });
         }
 
-        // Load tourist outlook
         async function loadTouristOutlook() {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
@@ -239,7 +345,6 @@
             }
         }
 
-        // Display outlook data
         function displayOutlook(outlook) {
             const outlookEl = document.getElementById('outlook');
             outlookEl.innerHTML = '';
@@ -285,7 +390,7 @@
             outlookEl.style.display = 'grid';
         }
 
-        // Load on page load
+        // Load TouristPulse on page load
         window.addEventListener('DOMContentLoaded', loadTouristOutlook);
     </script>
 </body>
