@@ -1437,10 +1437,6 @@
             <div id="profile-content" style="display: none;">
                 <div class="profile-section">
                     <div class="profile-field">
-                        <div class="profile-label">Business ID</div>
-                        <div class="profile-value" id="profile-id">#N/A</div>
-                    </div>
-                    <div class="profile-field">
                         <div class="profile-label">Business Name</div>
                         <div class="profile-value" id="profile-business-name">N/A</div>
                     </div>
@@ -1821,7 +1817,6 @@
                 document.getElementById('profile-email').textContent = data.email || 'N/A';
                 document.getElementById('profile-address').textContent = data.address || 'N/A';
                 document.getElementById('profile-business-type').textContent = data.business_type || 'N/A';
-                document.getElementById('profile-id').textContent = `#${data.id || 'N/A'}`;
 
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
