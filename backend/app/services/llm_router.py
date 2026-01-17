@@ -25,16 +25,17 @@ class LLMRouter:
         return hashlib.sha256(combined.encode()).hexdigest()
     
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
-    async def call_deepseek_r1(metrics: Dict, fixed_costs: Dict) -> Dict:
-        """
-        Call DeepSeek R1 for CashFlow explanation
-        
-        Returns JSON with: bullets, actions, confidence_note
-        """
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10)
+)
+async def call_deepseek_r1(metrics: Dict, fixed_costs: Dict) -> Dict:
+    """
+    Call DeepSeek R1 for CashFlow explanation
+    
+    Returns JSON with: bullets, actions, confidence_note
+    """
+    try:
         prompt = f"""You are a financial advisor analyzing cash flow for a small business.
 
 Given these metrics:
@@ -62,6 +63,8 @@ Provide analysis as JSON with exactly these fields:
 
 Keep bullets concise (1 sentence each). Actions should be specific and actionable."""
 
+        logger.info(f"Calling OpenRouter API with model: {settings.deepseek_r1_model}")
+        
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 LLMRouter.OPENROUTER_BASE_URL,
@@ -76,6 +79,14 @@ Keep bullets concise (1 sentence each). Actions should be specific and actionabl
                     "max_tokens": 1000,
                 }
             )
+            
+            logger.info(f"OpenRouter response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                error_text = response.text
+                logger.error(f"OpenRouter API error: {response.status_code} - {error_text}")
+                raise Exception(f"OpenRouter returned {response.status_code}: {error_text}")
+            
             response.raise_for_status()
             
             result = response.json()
@@ -83,7 +94,6 @@ Keep bullets concise (1 sentence each). Actions should be specific and actionabl
             
             # Parse JSON from response
             try:
-                # Try to extract JSON if wrapped in markdown
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
@@ -100,6 +110,9 @@ Keep bullets concise (1 sentence each). Actions should be specific and actionabl
                     "actions": ["Monitor trends", "Review fixed costs", "Plan contingencies"],
                     "confidence_note": f"Based on {metrics['confidence']:.0%} confidence score"
                 }
+    except Exception as e:
+        logger.error(f"DeepSeek R1 call failed completely: {type(e).__name__}: {str(e)}")
+        raise
     
     @staticmethod
     @retry(

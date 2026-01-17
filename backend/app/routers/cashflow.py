@@ -96,7 +96,7 @@ async def analyze_cashflow(
         
         logger.info(f"Created analysis {analysis.id} with {len(daily_revenue_list)} days")
         
-        # Get LLM explanation (with caching)
+        # Get LLM explanation (with caching and fallback)
         cache_key = LLMRouter.generate_cache_key(
             {"metrics": metrics, "fixed_costs": fixed_costs},
             "deepseek-r1"
@@ -106,9 +106,30 @@ async def analyze_cashflow(
         
         if cached_explanation:
             explanation_dict = cached_explanation
+            logger.info("Using cached LLM response")
         else:
-            explanation_dict = await LLMRouter.call_deepseek_r1(metrics, fixed_costs)
-            CacheService.set_llm_output(db, cache_key, "deepseek-r1", explanation_dict)
+            try:
+                logger.info("Calling DeepSeek R1 for explanation")
+                explanation_dict = await LLMRouter.call_deepseek_r1(metrics, fixed_costs)
+                CacheService.set_llm_output(db, cache_key, "deepseek-r1", explanation_dict)
+                logger.info("LLM response cached successfully")
+            except Exception as e:
+                logger.warning(f"LLM call failed, using fallback: {type(e).__name__}: {str(e)}")
+                # Fallback explanation - works without AI
+                explanation_dict = {
+                    "bullets": [
+                        f"Average daily revenue: ${metrics['avg_daily_revenue']:.2f}",
+                        f"Revenue trend (30-day): {metrics['trend_30d']:.1f}%",
+                        f"Business risk state: {metrics['risk_state']}",
+                        f"Fixed cost burden: {metrics['fixed_cost_burden']:.1%} of revenue"
+                    ],
+                    "actions": [
+                        "Monitor daily cash flow trends",
+                        "Review fixed cost structure for optimization",
+                        "Build emergency cash reserves"
+                    ],
+                    "confidence_note": f"Analysis based on {len(daily_revenue_list)} days with {metrics['confidence']:.1%} confidence"
+                }
         
         # Build response
         return CashFlowAnalysisResponse(
