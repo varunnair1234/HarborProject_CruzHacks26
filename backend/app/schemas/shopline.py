@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import List, Optional
 
 
 class BusinessProfile(BaseModel):
@@ -49,65 +49,29 @@ class FeaturedBusinessResponse(BaseModel):
     generated_at: str
 
 
-# ===== Shopline Analyst Schemas =====
-
-class BusinessMetricsInput(BaseModel):
-    """Business performance metrics for analysis"""
-    avg_daily_revenue: Optional[float] = Field(None, description="Average daily revenue")
-    trend_7d: Optional[float] = Field(None, description="7-day revenue trend as decimal")
-    trend_14d: Optional[float] = Field(None, description="14-day revenue trend as decimal")
-    trend_30d: Optional[float] = Field(None, description="30-day revenue trend as decimal")
-    volatility: Optional[float] = Field(None, description="Revenue volatility (coefficient of variation)")
-    fixed_cost_burden: Optional[float] = Field(None, description="Fixed costs as fraction of revenue")
-    runway_days: Optional[float] = Field(None, description="Cash runway in days")
-    risk_state: Optional[str] = Field(None, description="Current risk state: healthy, caution, critical")
+class ShoplineEventSearchInput(BaseModel):
+    """Input for event recommendation"""
+    categories: List[str] = Field(..., description="Selected event categories")
+    query: Optional[str] = Field(None, description="Optional free-text query")
+    limit: int = Field(10, description="Max number of events to return")
 
 
-class LocalSignalsInput(BaseModel):
-    """Local demand signals for analysis"""
-    weather_forecast: Optional[List[dict]] = Field(None, description="7-day weather forecast")
-    upcoming_events: Optional[List[dict]] = Field(None, description="Upcoming local events")
-    day_of_week_pattern: Optional[dict] = Field(None, description="Day-of-week revenue patterns")
-    seasonality_factor: Optional[float] = Field(None, description="Current seasonality multiplier")
+class ShoplineEvent(BaseModel):
+    """Event returned by Shopline"""
+    id: str
+    title: str
+    description: Optional[str]
+    start_time: Optional[str]
+    location: Optional[str]
+    categories: List[str]
+    url: Optional[str]
+    source: Optional[str]
 
 
-class ShoplineAnalysisInput(BaseModel):
-    """Input for Shopline business analysis"""
-    business_name: str = Field(..., description="Business name")
-    business_type: str = Field(..., description="Type of business (cafe, retail, restaurant, etc.)")
-    metrics: Optional[BusinessMetricsInput] = Field(None, description="Business performance metrics")
-    local_signals: Optional[LocalSignalsInput] = Field(None, description="Local demand signals")
-    analysis_id: Optional[int] = Field(None, description="Optional linked CashFlow analysis ID")
-
-
-class DiagnosisOutput(BaseModel):
-    """Business health diagnosis"""
-    state: Literal["healthy", "caution", "risk"]
-    why: List[str] = Field(..., min_length=3, max_length=3)
-
-
-class OutlookOutput(BaseModel):
-    """7-day demand outlook"""
-    demand_level: Literal["low", "moderate", "high"]
-    drivers: List[str] = Field(..., min_length=1, max_length=4)
-    suppressors: List[str] = Field(default_factory=list, max_length=3)
-
-
-class ActionItem(BaseModel):
-    """Prioritized action recommendation"""
-    action: str
-    reason: str
-    expected_impact: Literal["low", "medium", "high"]
-    effort: Literal["low", "medium", "high"]
-
-
-class ShoplineAnalysisResponse(BaseModel):
-    """Full Shopline analysis response"""
-    summary: str
-    diagnosis: DiagnosisOutput
-    next_7_days_outlook: OutlookOutput
-    prioritized_actions: List[ActionItem] = Field(..., min_length=3, max_length=5)
-    watchlist: List[str] = Field(..., min_length=3, max_length=6)
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    limitations: str
+class ShoplineEventSearchResponse(BaseModel):
+    """Event recommendation response"""
+    categories: List[str]
+    query: Optional[str]
+    results: List[ShoplineEvent]
+    total: int
     generated_at: str
