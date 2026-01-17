@@ -4,6 +4,8 @@ from datetime import datetime
 import logging
 import json
 from app.db.session import get_db
+from app.db.models import Business
+from app.core.dependencies import get_current_business
 from app.db.models import Analysis, RentScenario, DailyRevenue
 from app.schemas.rentguard import (
     RentImpactInput,
@@ -23,7 +25,8 @@ router = APIRouter(prefix="/rentguard", tags=["rentguard"])
 @router.post("/impact", response_model=RentImpactResponse)
 async def analyze_rent_impact(
     input_data: RentImpactInput,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     Analyze impact of rent increase on existing analysis
@@ -41,7 +44,8 @@ async def analyze_rent_impact(
         
         # Get base analysis
         analysis = db.query(Analysis).filter(
-            Analysis.id == input_data.analysis_id
+            Analysis.id == input_data.analysis_id,
+            Analysis.business_id == current_business.id
         ).first()
         
         if not analysis:
@@ -204,15 +208,19 @@ async def analyze_rent_impact(
 @router.get("/scenarios/{analysis_id}")
 async def list_scenarios(
     analysis_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     List all rent scenarios for an analysis
     
     Returns all simulated rent scenarios for a given analysis
     """
-    # Verify analysis exists
-    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    # Verify analysis exists and belongs to current business
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.business_id == current_business.id
+    ).first()
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
     

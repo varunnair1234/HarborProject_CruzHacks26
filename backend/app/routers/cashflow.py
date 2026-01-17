@@ -69,6 +69,31 @@ async def analyze_cashflow(
         
         # Compute metrics
         metrics = CashFlowEngine.compute_metrics(daily_revenue_list, fixed_costs, variable_cost_rate=variable_cost_rate)
+
+        # Build an LLM payload that includes margin-aware fields and assumptions
+        llm_metrics_payload = {
+            **metrics,
+            "variable_cost_rate": variable_cost_rate,
+            "fixed_costs_monthly": {
+                "rent": rent,
+                "payroll": payroll,
+                "other": other,
+            },
+            "cash_on_hand": cash_on_hand,
+        }
+
+        # Filter metrics for response model in case the schema does not allow extra fields
+        try:
+            allowed = set(getattr(CashFlowMetrics, "model_fields", {}).keys())  # pydantic v2
+        except Exception:
+            allowed = set()
+        if not allowed:
+            try:
+                allowed = set(getattr(CashFlowMetrics, "__fields__", {}).keys())  # pydantic v1
+            except Exception:
+                allowed = set(metrics.keys())
+
+        metrics_for_response = {k: metrics[k] for k in allowed if k in metrics}
         
         # Create analysis record
         analysis = Analysis(
@@ -106,24 +131,24 @@ async def analyze_cashflow(
         
         # Get LLM explanation (with caching)
         cache_key = LLMRouter.generate_cache_key(
-            {"metrics": metrics, "fixed_costs": fixed_costs, "variable_cost_rate": variable_cost_rate},
+            {"metrics": llm_metrics_payload, "fixed_costs": fixed_costs},
             "deepseek-r1"
         )
-        
+
         cached_explanation = CacheService.get_llm_output(db, cache_key)
-        
+
         if cached_explanation:
             explanation_dict = cached_explanation
         else:
-            explanation_dict = await LLMRouter.call_deepseek_r1(metrics, {**fixed_costs, "variable_cost_rate": variable_cost_rate})
+            explanation_dict = await LLMRouter.call_deepseek_r1(llm_metrics_payload, fixed_costs)
             CacheService.set_llm_output(db, cache_key, "deepseek-r1", explanation_dict)
-        
+
         # Build response
         return CashFlowAnalysisResponse(
             analysis_id=analysis.id,
             business_name=final_business_name,
             data_days=len(daily_revenue_list),
-            metrics=CashFlowMetrics(**metrics),
+            metrics=CashFlowMetrics(**metrics_for_response),
             explanation=LLMExplanation(**explanation_dict),
             created_at=analysis.created_at.isoformat()
         )

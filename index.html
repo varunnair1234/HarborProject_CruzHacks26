@@ -129,91 +129,109 @@
         /* TouristPulse Styles */
         .outlook-grid {
             display: grid;
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
         }
 
         .outlook-card {
+            background: white;
+            border-radius: 12px;
             padding: 1.5rem;
-            border: 2px solid;
-            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .outlook-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .outlook-card.low {
-            background: #fef3c7;
-            border-color: #f59e0b;
-            color: #92400e;
-        }
-
-        .outlook-card.moderate {
-            background: #bfdbfe;
-            border-color: #3b82f6;
-            color: #1e40af;
-        }
-
-        .outlook-card.high {
-            background: #bbf7d0;
-            border-color: #22c55e;
-            color: #166534;
-        }
-
-        .outlook-card.very_high {
-            background: #d8b4fe;
-            border-color: #a855f7;
-            color: #6b21a8;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
 
         .card-date {
-            font-size: 1.1rem;
-            font-weight: bold;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #374151;
         }
 
-        .card-level {
-            font-size: 0.9rem;
+        .activity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
             font-weight: 600;
             text-transform: uppercase;
         }
 
-        .card-confidence {
-            font-size: 0.85rem;
+        .activity-badge.high {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .activity-badge.moderate {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .activity-badge.low {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .activity-percentage {
+            font-size: 0.75rem;
             opacity: 0.8;
-            margin-top: 0.25rem;
         }
 
         .card-summary {
-            font-size: 0.9rem;
-            margin-top: 0.75rem;
-            font-style: italic;
-            opacity: 0.9;
+            margin: 1rem 0;
+            line-height: 1.6;
+            color: #4b5563;
+            font-size: 0.95rem;
         }
 
-        .card-drivers {
-            font-size: 0.85rem;
-            margin-top: 1rem;
+        .key-drivers {
+            margin-top: 1.25rem;
             padding-top: 1rem;
-            border-top: 1px solid currentColor;
-            opacity: 0.8;
+            border-top: 1px solid #e5e7eb;
         }
 
-        .card-drivers ul {
-            margin-top: 0.5rem;
-            padding-left: 1.25rem;
+        .key-drivers-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
         }
 
-        .card-drivers li {
-            margin: 0.25rem 0;
+        .driver-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .driver-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .driver-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
         }
 
         .empty-state {
@@ -771,6 +789,108 @@
             gap: 1rem;
             margin: 1rem 0;
         }
+
+        /* Auth Styles */
+        .auth-container {
+            max-width: 500px;
+            margin: 3rem auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .auth-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .auth-tab.active {
+            color: #0A4D68;
+            border-bottom-color: #0A4D68;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .auth-form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .auth-form-group input,
+        .auth-form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .auth-form-group input:focus,
+        .auth-form-group select:focus {
+            outline: none;
+            border-color: #0A4D68;
+        }
+
+        .auth-error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .auth-success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            padding: 0.5rem 1rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -778,16 +898,75 @@
         <h1>Harbor</h1>
         <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-button active" data-tab="touristpulse">TouristPulse</button>
-            <button class="tab-button" data-tab="cashflow">CashFlow Calm</button>
-            <button class="tab-button" data-tab="rentguard">RentGuard</button>
-            <button class="tab-button" data-tab="shopline">Shopline</button>
+        <!-- Auth Container (shown when not logged in) -->
+        <div id="auth-container" class="auth-container">
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthForm('login')">Login</button>
+                <button class="auth-tab" onclick="showAuthForm('signup')">Sign Up</button>
+            </div>
+
+            <div id="auth-error" class="auth-error"></div>
+            <div id="auth-success" class="auth-success"></div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="auth-form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
+                <div class="auth-form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-business-name">Business Name</label>
+                    <input type="text" id="signup-business-name" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-address">Address</label>
+                    <input type="text" id="signup-address" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-business-type">Business Type</label>
+                    <select id="signup-business-type" required>
+                        <option value="">Select a type</option>
+                        <option value="cafe">Cafe</option>
+                        <option value="boutique">Boutique</option>
+                        <option value="bakery/dessert">Bakery/Dessert</option>
+                        <option value="bookstore/stationary">Bookstore/Stationary</option>
+                        <option value="art">Art</option>
+                    </select>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-password">Password (min 8 characters)</label>
+                    <input type="password" id="signup-password" minlength="8" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
         </div>
 
+        <!-- Main App (shown when logged in) -->
+        <div id="main-app" style="display: none;">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-button" data-tab="touristpulse" style="display: none;">TouristPulse</button>
+                <button class="tab-button" data-tab="cashflow" style="display: none;">CashFlow Calm</button>
+                <button class="tab-button" data-tab="rentguard" style="display: none;">RentGuard</button>
+                <button class="tab-button active" data-tab="shopline">Shopline</button>
+                <button class="logout-btn" onclick="handleLogout()" style="display: none;">Logout</button>
+            </div>
+
         <!-- TouristPulse Tab -->
-        <div id="touristpulse" class="tab-content active">
+        <div id="touristpulse" class="tab-content">
             <div class="section-header">
                 <h2>7-Day Tourism Forecast for Santa Cruz</h2>
                 <button class="refresh-btn" onclick="loadTouristOutlook()" id="refresh-tourist-btn">Refresh</button>
@@ -984,12 +1163,180 @@
         const BACKEND_URL = 'https://harborproject-cruzhacks26.onrender.com';
         const LOCATION = 'Santa Cruz';
 
+        // ===== Auth State Management =====
+        function getAuthToken() {
+            return localStorage.getItem('auth_token');
+        }
+
+        function setAuthToken(token) {
+            localStorage.setItem('auth_token', token);
+        }
+
+        function removeAuthToken() {
+            localStorage.removeItem('auth_token');
+        }
+
+        function isAuthenticated() {
+            return !!getAuthToken();
+        }
+
+        function getAuthHeaders() {
+            const token = getAuthToken();
+            if (!token) return {};
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        // Check auth on page load
+        function checkAuth() {
+            if (isAuthenticated()) {
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                // Show all tabs for authenticated users
+                document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = '');
+            } else {
+                document.getElementById('auth-container').style.display = 'block';
+                document.getElementById('main-app').style.display = 'block'; // Show main app but only Shopline tab
+                // Hide protected tabs, show only Shopline
+                document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = 'none');
+                showTab('shopline');
+            }
+        }
+
+        // Auth form switching
+        function showAuthForm(formType) {
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+            
+            if (formType === 'login') {
+                document.querySelector('.auth-tab:first-child').classList.add('active');
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:last-child').classList.add('active');
+                document.getElementById('signup-form').classList.add('active');
+            }
+            
+            document.getElementById('auth-error').style.display = 'none';
+            document.getElementById('auth-success').style.display = 'none';
+        }
+
+        // Handle login
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('auth-error');
+            const successEl = document.getElementById('auth-success');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Login failed');
+                }
+
+                const data = await response.json();
+                setAuthToken(data.access_token);
+                successEl.textContent = 'Login successful!';
+                successEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                
+                setTimeout(() => {
+                    checkAuth();
+                }, 500);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+                successEl.style.display = 'none';
+            }
+        }
+
+        // Handle signup
+        async function handleSignup(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const businessName = document.getElementById('signup-business-name').value;
+            const address = document.getElementById('signup-address').value;
+            const businessType = document.getElementById('signup-business-type').value;
+            const password = document.getElementById('signup-password').value;
+            const errorEl = document.getElementById('auth-error');
+            const successEl = document.getElementById('auth-success');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/auth/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        business_name: businessName,
+                        address,
+                        business_type: businessType,
+                        password
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Signup failed');
+                }
+
+                successEl.textContent = 'Account created! Please login.';
+                successEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                
+                // Switch to login form
+                setTimeout(() => {
+                    showAuthForm('login');
+                    document.getElementById('login-email').value = email;
+                }, 1000);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+                successEl.style.display = 'none';
+            }
+        }
+
+        // Handle logout
+        function handleLogout() {
+            removeAuthToken();
+            checkAuth();
+        }
+
+        // Initialize auth check on page load
+        checkAuth();
+
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.addEventListener('click', () => showTab(btn.dataset.tab));
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                // Check if user is trying to access protected tab
+                if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard'].includes(tabName)) {
+                    alert('Please login to access this feature');
+                    return;
+                }
+                showTab(tabName);
+            });
         });
 
         function showTab(tabName) {
+            // Prevent access to protected tabs if not authenticated
+            if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard'].includes(tabName)) {
+                return;
+            }
+
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -997,8 +1344,13 @@
                 btn.classList.remove('active');
             });
 
-            document.getElementById(tabName).classList.add('active');
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            const tabElement = document.getElementById(tabName);
+            const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
+            
+            if (tabElement && tabButton) {
+                tabElement.classList.add('active');
+                tabButton.classList.add('active');
+            }
 
             // Load data when switching to certain tabs
             if (tabName === 'rentguard') {
@@ -1007,6 +1359,8 @@
                 loadPreviousAnalyses();
             } else if (tabName === 'shopline') {
                 loadFeaturedBusinesses();
+            } else if (tabName === 'touristpulse') {
+                loadTouristOutlook();
             }
         }
 
@@ -1077,7 +1431,10 @@
                 outlookEl.style.display = 'none';
 
                 const response = await fetch(
-                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=7`
+                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=7`,
+                    {
+                        headers: getAuthHeaders()
+                    }
                 );
 
                 if (!response.ok) {
@@ -1118,31 +1475,118 @@
 
             outlook.forEach(day => {
                 const card = document.createElement('div');
-                card.className = `outlook-card ${getLevelClass(day.demand_level)}`;
+                card.className = 'outlook-card';
 
-                const driversHtml = day.drivers && day.drivers.length > 0
-                    ? `
-                        <div class="card-drivers">
-                            <strong>Drivers:</strong>
-                            <ul>
-                                ${day.drivers.map(driver =>
-                                    `<li>${driver.source}: ${driver.factor} (${driver.impact})</li>`
-                                ).join('')}
-                            </ul>
-                        </div>
-                    `
-                    : '';
+                // Extract key information from drivers
+                let weatherText = '';
+                let eventsText = '';
+                let trafficText = '';
+                
+                if (day.drivers && Array.isArray(day.drivers)) {
+                    day.drivers.forEach(driver => {
+                        if (driver.source === 'weather' && driver.factor) {
+                            // Capitalize first letter of each word
+                            weatherText = driver.factor.split(' ').map(w => 
+                                w.charAt(0).toUpperCase() + w.slice(1)
+                            ).join(' ');
+                        } else if (driver.source === 'events' && driver.factor) {
+                            // Parse "6 event(s)" format or just use the text
+                            const eventMatch = driver.factor.match(/(\d+)\s*event/i);
+                            if (eventMatch) {
+                                const count = parseInt(eventMatch[1]);
+                                eventsText = count === 1 ? '1 event' : `${count} events`;
+                            } else {
+                                eventsText = driver.factor;
+                            }
+                        } else if (driver.source === 'traffic' && driver.factor) {
+                            trafficText = driver.factor;
+                        }
+                    });
+                }
+
+                // If no drivers parsed, try to extract from summary
+                if (!weatherText && day.summary) {
+                    const weatherMatch = day.summary.match(/(sunny|cloudy|rainy|clear|mostly sunny|partly cloudy|overcast)/i);
+                    if (weatherMatch) {
+                        weatherText = weatherMatch[1].charAt(0).toUpperCase() + weatherMatch[1].slice(1);
+                    }
+                }
+
+                // Extract traffic level from summary if not found
+                if (!trafficText || trafficText === 'congestion') {
+                    if (day.summary) {
+                        const summaryLower = day.summary.toLowerCase();
+                        if (summaryLower.includes('high congestion') || summaryLower.includes('heavy traffic')) {
+                            trafficText = 'High congestion';
+                        } else if (summaryLower.includes('moderate congestion') || summaryLower.includes('moderate traffic')) {
+                            trafficText = 'Moderate congestion';
+                        } else if (summaryLower.includes('low congestion') || summaryLower.includes('light traffic')) {
+                            trafficText = 'Low congestion';
+                        } else {
+                            trafficText = 'Moderate congestion';
+                        }
+                    } else {
+                        trafficText = 'Moderate congestion';
+                    }
+                } else {
+                    // Capitalize traffic text
+                    trafficText = trafficText.charAt(0).toUpperCase() + trafficText.slice(1);
+                }
+
+                // Format weather text
+                if (!weatherText) weatherText = 'Weather data unavailable';
+
+                // Get activity level label
+                const activityLabel = day.demand_level === 'high' ? 'High Activity' : 
+                                    day.demand_level === 'moderate' ? 'Moderate Activity' : 
+                                    'Low Activity';
+                const activityClass = day.demand_level === 'high' ? 'high' : 
+                                     day.demand_level === 'moderate' ? 'moderate' : 
+                                     'low';
+                const confidencePercent = day.confidence ? Math.round(day.confidence * 100) : 0;
 
                 card.innerHTML = `
                     <div class="card-header">
-                        <div>
-                            <div class="card-date">${formatDate(day.date)}</div>
-                            <div class="card-level">Level: ${getLevelLabel(day.demand_level)}</div>
-                            ${day.confidence ? `<div class="card-confidence">(${Math.round(day.confidence * 100)}% confidence)</div>` : ''}
+                        <div class="card-date">${formatDate(day.date)}</div>
+                        <div class="activity-badge ${activityClass}">
+                            ${activityLabel}
+                            <span class="activity-percentage">${confidencePercent}%</span>
                         </div>
                     </div>
                     ${day.summary ? `<div class="card-summary">${day.summary}</div>` : ''}
-                    ${driversHtml}
+                    <div class="key-drivers">
+                        <div class="key-drivers-title">Key Drivers</div>
+                        ${weatherText ? `
+                            <div class="driver-item">
+                                <div class="driver-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364 8.364l-1.591 1.591M21 12H2.25m4.318 4.318l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773l-1.591-1.591M12 2.25V5.25m0 13.5V21m-4.227-4.773l-1.591 1.591M5.25 12H3m13.5-4.773l-1.591-1.591M21 12h-2.25m-4.773 4.227l-1.591-1.591M12 18.75V21" />
+                                    </svg>
+                                </div>
+                                <span>${weatherText}</span>
+                            </div>
+                        ` : ''}
+                        ${eventsText ? `
+                            <div class="driver-item">
+                                <div class="driver-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                    </svg>
+                                </div>
+                                <span>${eventsText}</span>
+                            </div>
+                        ` : ''}
+                        ${trafficText ? `
+                            <div class="driver-item">
+                                <div class="driver-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V11.25c0-1.621-1.505-2.125-3-2.125m0 12.375h-1.5c-.621 0-1.125.504-1.125 1.125v3.375c0 .621.504 1.125 1.125 1.125h1.5c.621 0 1.125-.504 1.125-1.125v-3.375c0-.621-.504-1.125-1.125-1.125m8.25-9.75H21m-1.5 0v-1.5m0 1.5v-1.5m-1.5 0h1.5m-1.5 0h-1.5m0 0H12m-1.5 0H9.75m0 0H8.25m1.5 0v1.5m0-1.5v1.5m0 0h1.5m-1.5 0h1.5" />
+                                    </svg>
+                                </div>
+                                <span>${trafficText}</span>
+                            </div>
+                        ` : ''}
+                    </div>
                 `;
 
                 outlookEl.appendChild(card);
@@ -1208,8 +1652,12 @@
                 if (cashOnHand) formData.append('cash_on_hand', cashOnHand);
                 if (businessName) formData.append('business_name', businessName);
 
+                // FormData: Don't set Content-Type, browser sets it with boundary
+                const token = getAuthToken();
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const response = await fetch(`${BACKEND_URL}/cashflow/analyze`, {
                     method: 'POST',
+                    headers: headers,
                     body: formData
                 });
 
@@ -1295,7 +1743,9 @@
             const analysesList = document.getElementById('analyses-list');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=5`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=5`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) return;
 
                 const analyses = await response.json();
@@ -1323,7 +1773,9 @@
 
         async function loadAnalysisDetails(analysisId) {
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses/${analysisId}`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses/${analysisId}`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) throw new Error('Failed to load analysis');
 
                 const data = await response.json();
@@ -1357,7 +1809,9 @@
             const selectEl = document.getElementById('analysis-select');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=20`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=20`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) throw new Error('Failed to load analyses');
 
                 const analyses = await response.json();
@@ -1430,9 +1884,10 @@
                 if (newRent) payload.new_rent = parseFloat(newRent);
                 if (effectiveDate) payload.effective_date = effectiveDate;
 
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
                 const response = await fetch(`${BACKEND_URL}/rentguard/impact`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
 
@@ -1537,7 +1992,9 @@
             const scenariosList = document.getElementById('scenarios-list');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/rentguard/scenarios/${analysisId}`);
+                const response = await fetch(`${BACKEND_URL}/rentguard/scenarios/${analysisId}`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) return;
 
                 const scenarios = await response.json();
