@@ -891,6 +891,76 @@
         .logout-btn:hover {
             background: #dc2626;
         }
+
+        /* Profile Styles */
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .profile-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #0A4D68, #088395);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .profile-icon svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .profile-header h3 {
+            margin: 0;
+            color: #0A4D68;
+            font-size: 1.5rem;
+        }
+
+        .profile-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .profile-detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .profile-label {
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-value {
+            color: #1f2937;
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
     </style>
 </head>
 <body>
@@ -962,6 +1032,7 @@
                 <button class="tab-button" data-tab="cashflow" style="display: none;">CashFlow Calm</button>
                 <button class="tab-button" data-tab="rentguard" style="display: none;">RentGuard</button>
                 <button class="tab-button active" data-tab="shopline">Shopline</button>
+                <button class="tab-button" data-tab="profile" style="display: none;">Profile</button>
                 <button class="logout-btn" onclick="handleLogout()" style="display: none;">Logout</button>
             </div>
 
@@ -1198,6 +1269,7 @@
                 document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = '');
                 document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = '');
                 document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = '');
+                document.querySelectorAll('.tab-button[data-tab="profile"]').forEach(btn => btn.style.display = '');
                 document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = '');
             } else {
                 document.getElementById('auth-container').style.display = 'block';
@@ -1206,6 +1278,7 @@
                 document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = 'none');
                 document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = 'none');
                 document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = 'none');
+                document.querySelectorAll('.tab-button[data-tab="profile"]').forEach(btn => btn.style.display = 'none');
                 document.querySelectorAll('.logout-btn').forEach(btn => btn.style.display = 'none');
                 showTab('shopline');
             }
@@ -1362,7 +1435,7 @@
 
         function showTab(tabName) {
             // Prevent access to protected tabs if not authenticated
-            if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard'].includes(tabName)) {
+            if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard', 'profile'].includes(tabName)) {
                 return;
             }
 
@@ -1375,7 +1448,7 @@
 
             const tabElement = document.getElementById(tabName);
             const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
-            
+
             if (tabElement && tabButton) {
                 tabElement.classList.add('active');
                 tabButton.classList.add('active');
@@ -1390,6 +1463,8 @@
                 loadFeaturedBusinesses();
             } else if (tabName === 'touristpulse') {
                 loadTouristOutlook();
+            } else if (tabName === 'profile') {
+                loadProfile();
             }
         }
 
@@ -1430,6 +1505,56 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+
+        // ===== Profile Functions =====
+        async function loadProfile() {
+            const loadingEl = document.getElementById('profile-loading');
+            const errorEl = document.getElementById('profile-error');
+            const contentEl = document.getElementById('profile-content');
+
+            try {
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                contentEl.style.display = 'none';
+
+                const response = await fetch(`${BACKEND_URL}/auth/me`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // Token expired or invalid
+                        removeAuthToken();
+                        checkAuth();
+                        throw new Error('Session expired. Please login again.');
+                    }
+                    let errorMessage = 'Failed to load profile';
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.detail || error.message || `HTTP ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                
+                // Update profile fields
+                document.getElementById('profile-business-name').textContent = data.business_name;
+                document.getElementById('profile-email').textContent = data.email;
+                document.getElementById('profile-address').textContent = data.address;
+                document.getElementById('profile-business-type').textContent = data.business_type;
+                document.getElementById('profile-id').textContent = `#${data.id}`;
+
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = err.message || 'Failed to load profile information';
+                errorEl.style.display = 'block';
+            }
         }
 
         // ===== TouristPulse Functions =====
