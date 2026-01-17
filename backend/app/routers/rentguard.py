@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 
 from app.db.session import get_db
-from app.db.models import Analysis, RentScenario, DailyRevenue, FixedCost
+from app.db.models import Analysis, RentScenario, DailyRevenue
 from app.schemas.rentguard import (
     RentImpactInput,
     RentImpactResponse,
@@ -52,12 +52,20 @@ async def analyze_rent_impact(
         if not fixed_costs:
             raise HTTPException(status_code=400, detail="Analysis has no fixed costs")
         
+        # Defensive defaults: treat missing numeric fields as 0.0
         fixed_costs_dict = {
-            "rent": fixed_costs.rent,
-            "payroll": fixed_costs.payroll,
-            "other": fixed_costs.other,
-            "cash_on_hand": fixed_costs.cash_on_hand
+            "rent": float(fixed_costs.rent or 0.0),
+            "payroll": float(fixed_costs.payroll or 0.0),
+            "other": float(fixed_costs.other or 0.0),
+            "cash_on_hand": float(fixed_costs.cash_on_hand or 0.0),
         }
+
+        # RentGuard requires a current rent value to simulate a change
+        if fixed_costs_dict["rent"] <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Analysis fixed costs missing a valid rent amount"
+            )
         
         # Get daily revenues and recompute current metrics
         daily_revenues = (
@@ -65,16 +73,25 @@ async def analyze_rent_impact(
             .filter(DailyRevenue.analysis_id == input_data.analysis_id)
             .all()
         )
-        
+
+        if not daily_revenues:
+            raise HTTPException(
+                status_code=400,
+                detail="Analysis has no daily revenue history to analyze"
+            )
+
         revenue_list = [{"date": dr.date, "revenue": dr.revenue} for dr in daily_revenues]
         current_metrics = CashFlowEngine.compute_metrics(revenue_list, fixed_costs_dict)
         
-        # Simulate rent impact
+        # Use effective_date year when available; otherwise use current year
+        year_for_baseline = input_data.effective_date.year if input_data.effective_date else datetime.utcnow().year
+
         impact_metrics = RentEngine.simulate_rent_impact(
             current_metrics,
             fixed_costs_dict,
             increase_pct=input_data.increase_pct,
-            new_rent=input_data.new_rent
+            new_rent=input_data.new_rent,
+            year=year_for_baseline,
         )
         
         # Create rent scenario record
@@ -99,21 +116,54 @@ async def analyze_rent_impact(
         )
         
         cached_explanation = CacheService.get_llm_output(db, cache_key)
-        
+
         if cached_explanation:
             explanation_dict = cached_explanation
         else:
-            explanation_dict = await LLMRouter.call_deepseek_v3(
-                impact_metrics,
-                {"business_name": analysis.business_name}
-            )
-            CacheService.set_llm_output(db, cache_key, "deepseek-v3", explanation_dict)
+            try:
+                explanation_dict = await LLMRouter.call_deepseek_v3(
+                    impact_metrics,
+                    {"business_name": analysis.business_name}
+                )
+                CacheService.set_llm_output(db, cache_key, "deepseek-v3", explanation_dict)
+            except Exception as llm_err:
+                logger.warning(f"LLM explanation failed, using deterministic fallback: {llm_err}")
+                # Deterministic fallback explanation (keeps endpoint reliable)
+                old_rent = impact_metrics.get("old_rent")
+                new_rent = impact_metrics.get("new_rent")
+                delta_monthly = impact_metrics.get("delta_monthly")
+                new_risk_state = impact_metrics.get("new_risk_state")
+                runway_impact_days = impact_metrics.get("runway_impact_days")
+
+                runway_line = ""
+                if isinstance(runway_impact_days, (int, float)):
+                    runway_line = f" This changes your runway by {runway_impact_days:+.0f} days."
+
+                explanation_dict = {
+                    "summary": f"Rent change from ${old_rent:,.0f} to ${new_rent:,.0f} increases fixed costs by ${delta_monthly:,.0f}/mo and moves risk state to '{new_risk_state}'.{runway_line}",
+                    "key_drivers": [
+                        f"Monthly rent delta: ${delta_monthly:,.0f}",
+                        f"New risk state: {new_risk_state}",
+                    ],
+                    "recommended_actions": [
+                        "Review lease terms and effective date.",
+                        "Consider negotiating the increase if it exceeds comparable market norms.",
+                        "If runway decreases materially, reduce other fixed costs or increase near-term revenue.",
+                    ],
+                }
         
-        # Build response
+        # RentEngine may return additional fields over time; filter to schema-supported keys
+        try:
+            allowed_metric_keys = set(RentImpactMetrics.model_fields.keys())  # Pydantic v2
+        except AttributeError:
+            allowed_metric_keys = set(RentImpactMetrics.__fields__.keys())    # Pydantic v1
+
+        metrics_payload = {k: v for k, v in impact_metrics.items() if k in allowed_metric_keys}
+
         return RentImpactResponse(
             scenario_id=scenario.id,
             analysis_id=input_data.analysis_id,
-            metrics=RentImpactMetrics(**impact_metrics),
+            metrics=RentImpactMetrics(**metrics_payload),
             explanation=RentImpactExplanation(**explanation_dict),
             created_at=scenario.created_at.isoformat()
         )
