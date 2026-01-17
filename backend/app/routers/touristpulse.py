@@ -314,14 +314,44 @@ Style requirements:
 - Focus on “why” rather than “what to do.”
 </AudienceAndTone>
 
+<EventWeighting>
+When evaluating events, weigh them based on expected attendance and draw:
+
+HIGH WEIGHT (Major tourism drivers):
+- Santa Cruz Beach Boardwalk events (iconic tourist destination)
+- City-wide festivals (e.g., "Downtown Santa Cruz", "Santa Cruz County")
+- Major music/arts events at large venues (Civic Auditorium, large theaters)
+- Sports events at major venues (Kaiser Permanente Arena)
+- Holiday celebrations and large community gatherings
+
+MEDIUM WEIGHT (Moderate tourism impact):
+- Farmers markets (regular, local draw)
+- Community events at mid-size venues
+- Regular cultural events (jazz center, smaller theaters)
+- Outdoor activities at state parks (moderate draw)
+
+LOW WEIGHT (Minimal tourism impact):
+- Small community gatherings
+- Local workshops or classes
+- Small markets or niche events
+- Events at small venues or private locations
+
+Consider:
+- Event name patterns: "Downtown", "County", "Boardwalk" suggest larger scale
+- Venue size: Large venues = more attendees
+- Event type: Festivals > Music > Sports > Food/Markets > Community
+- Multiple events on same day amplify impact
+</EventWeighting>
+
 <Task>
 Given the structured input signals below, produce a concise visitor demand outlook for the date provided.
 
 You must:
 1) Classify overall visitor activity as exactly one of: ["low", "moderate", "high"]
-2) Explain the classification using coastal Santa Cruz logic, including surf-driven tourism ONLY if the input supports it.
-3) Identify which factors are driving demand up or down.
-4) Note any uncertainty or conflicting signals honestly.
+2) Weight events appropriately based on their scale and location (see EventWeighting above)
+3) Explain the classification using coastal Santa Cruz logic, including surf-driven tourism ONLY if the input supports it.
+4) Identify which factors are driving demand up or down, noting which events are major vs minor contributors.
+5) Note any uncertainty or conflicting signals honestly.
 </Task>
 
 <OutputFormat>
