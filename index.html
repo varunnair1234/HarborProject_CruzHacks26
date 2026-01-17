@@ -1598,17 +1598,18 @@
         // ===== Weather Icon Helper =====
         function getWeatherIcon(weatherText) {
             const text = weatherText.toLowerCase();
-            // Check for cloudy/partly cloudy conditions
-            if (text.includes('cloud') || text.includes('fog') || text.includes('overcast') || text.includes('partly')) {
-                // Sun with cloud
+            // Check for cloudy/partly cloudy/fog conditions
+            if (text.includes('cloud') || text.includes('fog') || text.includes('overcast') || text.includes('partly') || text.includes('patchy')) {
+                // Sun with cloud (partly cloudy)
                 return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>`;
             } else {
-                // Simple sun
+                // Simple sun (sunny/clear)
                 return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364 8.364l-1.591 1.591M21 12H2.25m4.318 4.318l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773l-1.591-1.591M12 2.25V5.25m0 13.5V21m-4.227-4.773l-1.591-1.591M5.25 12H3m13.5-4.773l-1.591-1.591M21 12h-2.25m-4.773 4.227l-1.591-1.591M12 18.75V21" />
+                    <circle cx="12" cy="12" r="4" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
                 </svg>`;
             }
         }
