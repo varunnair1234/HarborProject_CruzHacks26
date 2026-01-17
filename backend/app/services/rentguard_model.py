@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +255,7 @@ def predict_expected_land_price(year: int) -> float:
     return _BASELINE.slope_per_year * y + _BASELINE.intercept
 
 
-def get_baseline() -> Dict[str, float | str]:
+def get_baseline() -> Dict[str, Union[float, str]]:
     """Expose baseline coefficients and metadata for debugging."""
     return {
         "slope_per_year": _BASELINE.slope_per_year,
@@ -280,6 +280,11 @@ def z_score_for_yoy(observed_yoy_pct: float) -> float:
     if std <= 0:
         return 0.0
     return (float(observed_yoy_pct) - float(mean)) / float(std)
+
+
+def is_using_fallback() -> bool:
+    """True if the model is using the embedded fallback series."""
+    return _BASELINE.source_csv == "embedded_fallback"
 
 
 def is_using_fallback() -> bool:
