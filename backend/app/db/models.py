@@ -109,3 +109,57 @@ class Business(Base):
     
     # Relationship to analyses
     analyses = relationship("Analysis", back_populates="business")
+
+class BusinessProfile(Base):
+    """Extended business profile with financial info"""
+    __tablename__ = "business_profiles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False, unique=True)
+    monthly_rent = Column(Float, nullable=False)
+    monthly_payroll = Column(Float, nullable=False)
+    other_fixed_costs = Column(Float, default=0.0, nullable=False)
+    cash_on_hand = Column(Float, nullable=True)
+    variable_cost_rate = Column(Float, default=0.0)  # 0.0 to 1.0
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationship
+    business = relationship("Business", backref="profile", uselist=False)
+
+
+class BusinessProfileInput(BaseModel):
+    """Business profile financial information"""
+    monthly_rent: float = Field(..., gt=0, description="Monthly rent")
+    monthly_payroll: float = Field(..., ge=0, description="Monthly payroll")
+    other_fixed_costs: float = Field(default=0.0, ge=0, description="Other monthly fixed costs")
+    cash_on_hand: float = Field(None, ge=0, description="Current cash reserves")
+    variable_cost_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="Variable costs as fraction of revenue")
+
+
+class BusinessProfileResponse(BaseModel):
+    """Business profile response"""
+    id: int
+    business_id: int
+    monthly_rent: float
+    monthly_payroll: float
+    other_fixed_costs: float
+    cash_on_hand: Optional[float]
+    variable_cost_rate: float
+    created_at: str
+    
+    class Config:
+        from_attributes = True
+
+
+class BusinessFullInfo(BaseModel):
+    """Complete business info with profile"""
+    id: int
+    email: str
+    business_name: str
+    address: str
+    business_type: str
+    profile: Optional[BusinessProfileResponse] = None
+    
+    class Config:
+        from_attributes = True
