@@ -4,7 +4,6 @@ from datetime import datetime
 import logging
 
 from app.db.session import get_db
-from app.db.models import Analysis, DailyRevenue
 from app.schemas.shopline import (
     FeaturedBusinessInput,
     FeaturedBusinessResponse,
@@ -12,15 +11,14 @@ from app.schemas.shopline import (
     ShoplineSearchInput,
     ShoplineSearchResponse,
     BusinessProfile,
-    ShoplineAnalysisInput,
-    ShoplineAnalysisResponse,
-    DiagnosisOutput,
-    OutlookOutput,
-    ActionItem
+    ShoplineEventSearchInput,
+    ShoplineEventSearchResponse,
+    ShoplineEvent
 )
 from app.services.llm_router import LLMRouter
 from app.services.cache import CacheService
-from app.services.cashflow_engine import CashFlowEngine
+from app.services.events_ingest_downtown import ingest_downtown_events
+from app.services.shopline_engine import normalize_event_categories, build_event_from_raw, recommend_events as recommend_events_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/shopline", tags=["shopline"])
@@ -126,114 +124,73 @@ async def generate_featured_businesses(
     
     # Sort by score descending
     featured.sort(key=lambda x: x.score, reverse=True)
-
+    
     return FeaturedBusinessResponse(
         featured=featured,
         generated_at=datetime.utcnow().isoformat()
     )
 
 
-@router.post("/analyze", response_model=ShoplineAnalysisResponse)
-async def analyze_business(
-    input_data: ShoplineAnalysisInput,
+@router.post("/events/recommend", response_model=ShoplineEventSearchResponse)
+async def recommend_events(
+    input_data: ShoplineEventSearchInput,
     db: Session = Depends(get_db)
 ):
-    """
-    Generate comprehensive business analysis using Shopline AI analyst
+    """Recommend downtown events based on selected categories (deterministic ranking).
 
-    Combines business performance metrics with local demand signals
-    to produce actionable insights and recommendations.
+    Pipeline:
+    - Ingest real events from Downtown Santa Cruz sources
+    - Normalize each event into canonical categories using Gemini
+    - Expand user query/categories (inside the engine)
+    - Rank deterministically by category overlap
+
+    Note: This endpoint does not generate fake events in production.
     """
-    logger.info(f"Shopline analysis requested for: {input_data.business_name}")
+    logger.info(
+        f"Event recommend request: categories={input_data.categories} query={getattr(input_data, 'query', None)} limit={input_data.limit}"
+    )
 
     try:
-        # Build input data for LLM
-        llm_input = {
-            "business_name": input_data.business_name,
-            "business_type": input_data.business_type,
-            "location": "Santa Cruz, CA"
-        }
+        # Ingest upcoming events (best-effort). Keep bounded for latency.
+        raw_events = ingest_downtown_events(limit_urls=200)
 
-        # Add metrics if provided
-        if input_data.metrics:
-            llm_input["metrics"] = input_data.metrics.model_dump(exclude_none=True)
+        events = []
+        for raw in raw_events:
+            # Normalize categories via Gemini (canonical set enforced in engine)
+            cats = normalize_event_categories(raw.title, raw.description)
+            events.append(build_event_from_raw(raw, cats))
 
-        # If analysis_id provided, fetch metrics from CashFlow analysis
-        if input_data.analysis_id:
-            analysis = db.query(Analysis).filter(Analysis.id == input_data.analysis_id).first()
-            if analysis:
-                daily_revenues = (
-                    db.query(DailyRevenue)
-                    .filter(DailyRevenue.analysis_id == input_data.analysis_id)
-                    .all()
-                )
+        recommended = recommend_events_service(
+            events=events,
+            selected_categories=input_data.categories,
+            user_text=getattr(input_data, "query", None),
+            limit=input_data.limit,
+        )
 
-                if daily_revenues and analysis.fixed_costs:
-                    revenue_list = [{"date": dr.date, "revenue": dr.revenue} for dr in daily_revenues]
-                    fixed_costs_dict = {
-                        "rent": float(analysis.fixed_costs.rent or 0),
-                        "payroll": float(analysis.fixed_costs.payroll or 0),
-                        "other": float(analysis.fixed_costs.other or 0),
-                        "cash_on_hand": float(analysis.fixed_costs.cash_on_hand or 0)
-                    }
+        # Convert to schema objects
+        results = [
+            ShoplineEvent(
+                id=e.id,
+                title=e.title,
+                description=e.description,
+                start_time=e.start_time_text,
+                location=e.location,
+                categories=e.categories,
+                url=e.url,
+                source=e.source,
+            )
+            for e in recommended
+        ]
 
-                    metrics = CashFlowEngine.compute_metrics(revenue_list, fixed_costs_dict)
-                    llm_input["metrics"] = {
-                        "avg_daily_revenue": metrics.get("avg_daily_revenue"),
-                        "trend_7d": metrics.get("trend_7d"),
-                        "trend_14d": metrics.get("trend_14d"),
-                        "trend_30d": metrics.get("trend_30d"),
-                        "volatility": metrics.get("volatility"),
-                        "fixed_cost_burden": metrics.get("fixed_cost_burden"),
-                        "runway_days": metrics.get("runway_days"),
-                        "risk_state": metrics.get("risk_state")
-                    }
-                    llm_input["data_days"] = len(daily_revenues)
-
-        # Add local signals if provided
-        if input_data.local_signals:
-            llm_input["local_signals"] = input_data.local_signals.model_dump(exclude_none=True)
-
-        # Check cache
-        cache_key = LLMRouter.generate_cache_key(llm_input, "shopline-analyst")
-        cached_result = CacheService.get_llm_output(db, cache_key)
-
-        if cached_result:
-            analysis_result = cached_result
-            logger.info("Using cached Shopline analysis")
-        else:
-            # Call LLM
-            analysis_result = await LLMRouter.call_shopline_analyst(llm_input)
-            CacheService.set_llm_output(db, cache_key, "gemini-shopline", analysis_result)
-            logger.info("Generated new Shopline analysis")
-
-        # Build response with validation
-        return ShoplineAnalysisResponse(
-            summary=analysis_result.get("summary", "Analysis complete."),
-            diagnosis=DiagnosisOutput(
-                state=analysis_result.get("diagnosis", {}).get("state", "caution"),
-                why=analysis_result.get("diagnosis", {}).get("why", [
-                    "Unable to fully assess business health.",
-                    "Some metrics may be missing.",
-                    "Review data inputs for completeness."
-                ])[:3]
-            ),
-            next_7_days_outlook=OutlookOutput(
-                demand_level=analysis_result.get("next_7_days_outlook", {}).get("demand_level", "moderate"),
-                drivers=analysis_result.get("next_7_days_outlook", {}).get("drivers", ["Insufficient data for drivers."]),
-                suppressors=analysis_result.get("next_7_days_outlook", {}).get("suppressors", [])
-            ),
-            prioritized_actions=[
-                ActionItem(**action) for action in analysis_result.get("prioritized_actions", [
-                    {"action": "Review business data", "reason": "Ensure complete metrics", "expected_impact": "medium", "effort": "low"}
-                ])[:5]
-            ],
-            watchlist=analysis_result.get("watchlist", ["Daily revenue", "Customer traffic", "Weather"])[:6],
-            confidence=min(max(analysis_result.get("confidence", 0.5), 0.0), 1.0),
-            limitations=analysis_result.get("limitations", "Analysis based on available data."),
-            generated_at=datetime.utcnow().isoformat()
+        return ShoplineEventSearchResponse(
+            categories=input_data.categories,
+            query=getattr(input_data, "query", None),
+            results=results,
+            total=len(results),
+            generated_at=datetime.utcnow().isoformat(),
         )
 
     except Exception as e:
-        logger.error(f"Shopline analysis failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        logger.error(f"Event recommend failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to recommend events")
+
