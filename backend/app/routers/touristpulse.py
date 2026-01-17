@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta
 import logging
@@ -6,398 +6,446 @@ import httpx
 import json
 import csv
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 from app.db.session import get_db
 from app.schemas.touristpulse import (
-    TouristPulseInput,
     TouristPulseResponse,
     TouristPulseOutlook,
-    DemandSignal
+    DemandSignal,
 )
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/touristpulse", tags=["touristpulse"])
 
-# Santa Cruz coordinates
+# Santa Cruz coordinates (default)
 SANTA_CRUZ_LAT = 36.9741
 SANTA_CRUZ_LON = -122.0308
 
+# Open-Meteo forecast_days varies by deployment; your logs show "0 to 16" but rejects 16.
+# Clamp to 15 to avoid off-by-one/provider variance.
+OPEN_METEO_SAFE_MAX_DAYS = 15
 
-async def fetch_weather_data(days: int = 15) -> Dict:
-    """Fetch weather data from Open-Meteo API"""
-    # Open-Meteo API allows 0-15 days (not 16!)
-    days = min(days, 15)
+
+def _clamp_int(value: int, min_v: int, max_v: int) -> int:
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={SANTA_CRUZ_LAT}&longitude={SANTA_CRUZ_LON}&hourly=temperature_2m,weathercode,precipitation_probability&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America%2FLos_Angeles&forecast_days={days}"
-        
+        v = int(value)
+    except Exception:
+        v = min_v
+    return max(min_v, min(v, max_v))
+
+
+async def fetch_weather_data(requested_days: int = 30) -> Dict:
+    """Fetch weather data from Open-Meteo API.
+
+    We clamp forecast_days to a safe max, then degrade gracefully beyond that window.
+    """
+    forecast_days = _clamp_int(requested_days, 1, OPEN_METEO_SAFE_MAX_DAYS)
+
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={SANTA_CRUZ_LAT}"
+        f"&longitude={SANTA_CRUZ_LON}"
+        "&hourly=temperature_2m,weathercode,precipitation_probability"
+        "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
+        "&timezone=America%2FLos_Angeles"
+        f"&forecast_days={forecast_days}"
+    )
+
+    try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            data = response.json()
-            logger.info(f"Successfully fetched weather data: {len(data.get('daily', {}).get('time', []))} days")
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+            n_days = len(data.get("daily", {}).get("time", []))
+            logger.info(
+                f"Successfully fetched weather data: {n_days} days "
+                f"(requested={requested_days}, fetched={forecast_days})"
+            )
             return data
     except httpx.TimeoutException as e:
         logger.error(f"Weather API timeout: {e}")
-        raise HTTPException(status_code=500, detail="Weather API request timed out")
+        raise HTTPException(status_code=504, detail="Weather API request timed out")
     except httpx.HTTPStatusError as e:
         logger.error(f"Weather API HTTP error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(status_code=500, detail=f"Weather API error: {e.response.status_code}")
+        # Upstream failure -> 502 is more accurate than 500
+        raise HTTPException(status_code=502, detail=f"Weather API error: {e.response.status_code}")
     except Exception as e:
         logger.error(f"Failed to fetch weather data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
 
 
 async def fetch_traffic_data() -> Dict:
-    """Fetch traffic data from TomTom API"""
+    """Fetch traffic data from TomTom API (optional). Falls back to mock data."""
     try:
-        # Get TomTom API key from environment
         tomtom_key = os.getenv("TOMTOM_API_KEY")
         if not tomtom_key:
-            logger.warning("TomTom API key not found, using mock data")
-            return {
-                "flow": {"congestionLevel": 0.3},
-                "incidents": []
-            }
-        
-        # TomTom Traffic Flow API
-        traffic_flow_url = f"https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?key={tomtom_key}&point={SANTA_CRUZ_LAT},{SANTA_CRUZ_LON}"
-        
+            logger.warning("TomTom API key not found, using mock traffic data")
+            return {"flow": {"congestionLevel": 0.3}, "incidents": []}
+
+        traffic_flow_url = (
+            "https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json"
+            f"?key={tomtom_key}&point={SANTA_CRUZ_LAT},{SANTA_CRUZ_LON}"
+        )
+
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(traffic_flow_url)
-            if response.status_code == 200:
-                flow_data = response.json()
-                congestion = None
-                if flow_data.get("flowSegmentData", {}).get("currentSpeed") and flow_data.get("flowSegmentData", {}).get("freeFlowSpeed"):
-                    current = flow_data["flowSegmentData"]["currentSpeed"]
-                    free = flow_data["flowSegmentData"]["freeFlowSpeed"]
-                    congestion = 1 - (current / free) if free > 0 else None
-                
-                return {
-                    "flow": {"congestionLevel": congestion},
-                    "incidents": []
-                }
-            else:
-                logger.warning(f"TomTom API returned {response.status_code}")
-                return {
-                    "flow": {"congestionLevel": 0.3},
-                    "incidents": []
-                }
+            resp = await client.get(traffic_flow_url)
+
+        if resp.status_code != 200:
+            logger.warning(f"TomTom API returned {resp.status_code}, using mock traffic data")
+            return {"flow": {"congestionLevel": 0.3}, "incidents": []}
+
+        flow_data = resp.json()
+        fsd = flow_data.get("flowSegmentData", {})
+        current = fsd.get("currentSpeed")
+        free = fsd.get("freeFlowSpeed")
+
+        congestion = None
+        if isinstance(current, (int, float)) and isinstance(free, (int, float)) and free > 0:
+            congestion = 1 - (current / free)
+
+        return {"flow": {"congestionLevel": congestion}, "incidents": []}
+
     except Exception as e:
-        logger.error(f"Failed to fetch traffic data: {e}")
-        return {
-            "flow": {"congestionLevel": 0.3},
-            "incidents": []
-        }
+        logger.error(f"Failed to fetch traffic data: {e}", exc_info=True)
+        return {"flow": {"congestionLevel": 0.3}, "incidents": []}
 
 
 def load_events() -> List[Dict]:
-    """Load events from CSV file"""
-    events = []
-    # Get the backend directory (parent of app directory)
-    # __file__ is: backend/app/routers/touristpulse.py
-    # So backend_dir should be: backend/
-    current_file = os.path.abspath(__file__)  # /path/to/backend/app/routers/touristpulse.py
-    app_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # /path/to/backend
-    backend_dir = app_dir  # backend directory
-    
-    # Try multiple possible paths for the CSV
+    """Load events from CSV file (optional). Returns empty list if unavailable."""
+    events: List[Dict] = []
+
+    current_file = os.path.abspath(__file__)  # backend/app/routers/touristpulse.py
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # backend/
+
     possible_paths = [
-        os.path.join(backend_dir, "santa_cruz_events_combined.csv"),  # backend/santa_cruz_events_combined.csv (most likely on Render)
-        os.path.join(os.path.dirname(current_file), "../../../santa_cruz_events_combined.csv"),  # Relative from router
-        os.path.join(os.getcwd(), "santa_cruz_events_combined.csv"),  # Current working directory
-        os.path.join(os.getcwd(), "backend", "santa_cruz_events_combined.csv"),  # If cwd is repo root
-        "santa_cruz_events_combined.csv",  # Just filename (if in cwd)
+        os.path.join(backend_dir, "santa_cruz_events_combined.csv"),
+        os.path.abspath(os.path.join(os.path.dirname(current_file), "../../../santa_cruz_events_combined.csv")),
+        os.path.join(os.getcwd(), "santa_cruz_events_combined.csv"),
+        os.path.join(os.getcwd(), "backend", "santa_cruz_events_combined.csv"),
+        "santa_cruz_events_combined.csv",
     ]
-    
-    logger.info(f"Attempting to load events CSV")
+
+    logger.info("Attempting to load events CSV")
     logger.info(f"Current file: {current_file}")
     logger.info(f"Backend dir: {backend_dir}")
-    logger.info(f"Current working directory: {os.getcwd()}")
-    
+    logger.info(f"Working directory: {os.getcwd()}")
+
     for path in possible_paths:
         abs_path = os.path.abspath(path)
         exists = os.path.exists(path)
         logger.info(f"Trying path: {abs_path} (exists: {exists})")
-        
-        if exists:
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if row.get('name') and row.get('date'):
-                            events.append({
-                                'name': row['name'],
-                                'date': row['date'],
-                                'location': row.get('location', 'Santa Cruz'),
-                                'type': row.get('type', 'community')
-                            })
-                logger.info(f"✅ Successfully loaded {len(events)} events from {abs_path}")
-                return events  # Return immediately on success
-            except Exception as e:
-                logger.error(f"Failed to load events from {path}: {e}", exc_info=True)
-                continue
-    
-    # If we get here, no CSV was found
+
+        if not exists:
+            continue
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    name = row.get("name")
+                    d = row.get("date")
+                    if name and d:
+                        events.append(
+                            {
+                                "name": name,
+                                "date": d,
+                                "location": row.get("location", "Santa Cruz"),
+                                "type": row.get("type", "community"),
+                            }
+                        )
+            logger.info(f"✅ Successfully loaded {len(events)} events from {abs_path}")
+            return events
+        except Exception as e:
+            logger.error(f"Failed to load events from {abs_path}: {e}", exc_info=True)
+
     logger.warning("⚠️ No events CSV file found. Predictions will work without event data.")
     logger.warning(f"Checked paths: {[os.path.abspath(p) for p in possible_paths]}")
-    return events  # Return empty list
+    return events
 
 
 def get_weather_condition(weathercode: int) -> str:
-    """Convert WMO weather code to condition"""
-    if weathercode == 0 or weathercode == 1:
+    """Convert WMO weather code to condition."""
+    if weathercode in (0, 1):
         return "Clear sky"
-    elif weathercode >= 2 and weathercode <= 3:
+    if 2 <= weathercode <= 3:
         return "Partly cloudy"
-    elif weathercode >= 45 and weathercode <= 48:
+    if 45 <= weathercode <= 48:
         return "Fog"
-    elif weathercode >= 51 and weathercode <= 67:
+    if 51 <= weathercode <= 67:
         return "Rain"
-    elif weathercode >= 71 and weathercode <= 86:
+    if 71 <= weathercode <= 86:
         return "Snow"
-    elif weathercode >= 95:
+    if weathercode >= 95:
         return "Thunderstorm"
     return "Cloudy"
 
 
 async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, events: List[Dict]) -> Dict:
-    """Call DeepSeek via OpenRouter for tourism prediction"""
+    """Call DeepSeek via OpenRouter for tourism prediction.
+    If unavailable, fall back to a simple heuristic.
+    """
     try:
-        # Use OpenRouter API key (same as other modules)
         openrouter_key = settings.openrouter_api_key
-        
+
+        # Fallback: deterministic, simple, and safe
         if not openrouter_key:
             logger.warning("OpenRouter API key not found, using fallback prediction")
-            # Return a simple prediction based on weather and events
             level = "normal"
             factor = 1.0
-            if weather.get('condition', '').lower() in ['clear sky', 'sunny']:
+
+            cond = (weather.get("condition") or "").lower()
+            if "clear" in cond or "sunny" in cond:
                 level = "high"
                 factor = 1.3
-            if len(events) > 0:
+            if events:
                 level = "high"
-                factor = 1.5
+                factor = max(factor, 1.5)
+
             return {
                 "level": level,
                 "factor": factor,
-                "reasoning": "Prediction based on weather and events (LLM unavailable)",
-                "confidence": 0.6
+                "reasoning": "Prediction based on weather and events (LLM unavailable).",
+                "confidence": 0.6,
             }
-        
-        # Build prompt
-        events_text = "\n".join([f"- {e['name']} ({e['type']})" for e in events]) if events else "No major events scheduled"
-        
-        prompt = f"""You are a tourism prediction expert for Santa Cruz, California. Based on the following data, predict the tourism level for {date_str}.
 
-WEATHER DATA:
-- Condition: {weather['condition']}
-- Temperature: {weather['temp_min']}°F - {weather['temp_max']}°F
-- Precipitation Probability: {weather['precipitation_probability']}%
+        events_text = "\n".join([f"- {e['name']} ({e.get('type', 'event')})" for e in events]) if events else "No major events scheduled"
+        congestion = traffic.get("flow", {}).get("congestionLevel")
+        congestion_pct = (congestion * 100) if isinstance(congestion, (int, float)) else 0.0
 
-TRAFFIC DATA:
-- Congestion Level: {traffic.get('flow', {}).get('congestionLevel', 0) * 100 if traffic.get('flow', {}).get('congestionLevel') else 0:.0f}%
-- Traffic Incidents: {len(traffic.get('incidents', []))}
+        # NOTE: no system prompt (per your R1-style guidelines); keep it all in user prompt.
+        prompt = f"""
+You are a tourism prediction engine for Santa Cruz, California. Use ONLY the provided data. Do not invent facts.
+
+DATE: {date_str}
+
+WEATHER:
+- Condition: {weather.get('condition')}
+- Temperature range: {weather.get('temp_min')}°F to {weather.get('temp_max')}°F
+- Precipitation probability: {weather.get('precipitation_probability')}%
+
+TRAFFIC:
+- Congestion level: {congestion_pct:.0f}%
+- Incidents count: {len(traffic.get('incidents', []))}
 
 EVENTS:
 {events_text}
 
-Based on this data, predict the tourism level for Santa Cruz on {date_str}. Consider:
-- Weather conditions (sunny/clear = higher tourism, rainy = lower)
-- Temperature (warm = higher, cold = lower)
-- Events (major events = higher tourism)
-- Traffic patterns (more congestion = more people = higher tourism)
-- Day of week (weekends typically higher)
+Task:
+Predict tourism level for Santa Cruz on the given date. Consider:
+- Clear/mild weather increases tourism; rainy/windy reduces casual tourism.
+- Events increase tourism.
+- Higher congestion can indicate more visitors.
+- Weekends are typically higher.
 
-Respond with ONLY a JSON object in this exact format:
+Output requirements:
+Respond with ONLY valid JSON (no markdown, no extra text) in this exact format:
 {{
   "level": "low" | "normal" | "high" | "very high",
-  "factor": <number between 0.5 and 2.0 representing multiplier vs normal>,
-  "reasoning": "<brief 1-2 sentence explanation>",
+  "factor": <number between 0.5 and 2.0>,
+  "reasoning": "<brief 1-2 sentence explanation grounded in the provided data>",
   "confidence": <number between 0 and 1>
-}}"""
+}}
+""".strip()
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
+            resp = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
                     "Authorization": f"Bearer {openrouter_key}",
                     "Content-Type": "application/json",
                 },
                 json={
+                    # Keep your current model unless you’ve switched the slug in OpenRouter
                     "model": "deepseek/deepseek-chat",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a helpful assistant that predicts tourism levels. Always respond with valid JSON only, no additional text.",
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt,
-                        },
-                    ],
+                    "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
-                    "max_tokens": 200,
-                }
+                    "top_p": 0.95,
+                    "max_tokens": 220,
+                },
             )
-            response.raise_for_status()
-            
-            result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            
-            # Parse JSON
-            try:
-                return json.loads(content)
-            except:
-                # Try to extract JSON from markdown
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
-                
-                return json.loads(content)
+            resp.raise_for_status()
+
+        result = resp.json()
+        content = result["choices"][0]["message"]["content"]
+
+        # Parse JSON (handle accidental fenced output)
+        try:
+            return json.loads(content)
+        except Exception:
+            if "```json" in content:
+                content = content.split("```json", 1)[1].split("```", 1)[0].strip()
+            elif "```" in content:
+                content = content.split("```", 1)[1].split("```", 1)[0].strip()
+            return json.loads(content)
+
     except Exception as e:
-        logger.error(f"LLM prediction failed: {e}")
-        # Fallback prediction
+        logger.error(f"LLM prediction failed: {e}", exc_info=True)
         return {
             "level": "normal",
             "factor": 1.0,
-            "reasoning": "Unable to generate prediction",
-            "confidence": 0.5
+            "reasoning": "Unable to generate prediction; using baseline demand.",
+            "confidence": 0.5,
         }
 
 
 @router.get("/outlook", response_model=TouristPulseResponse)
 async def get_tourist_outlook(
-    location: str = "Santa Cruz",
-    days: int = 30,
-    db: Session = Depends(get_db)
+    location: str = Query(default="Santa Cruz"),
+    days: int = Query(default=30, ge=1, le=60),
+    db: Session = Depends(get_db),
 ):
     """
-    Get tourist demand outlook for a location
-    
+    Get tourist demand outlook for a location.
+
     Integrates:
-    - Open-Meteo weather API for weather data
-    - TomTom traffic API for traffic data
-    - Local events CSV for event data
-    - DeepSeek LLM for demand analysis
+    - Open-Meteo weather API (forecast window is limited; we degrade gracefully beyond it)
+    - TomTom traffic API (optional, falls back to mock)
+    - Local events CSV (optional)
+    - DeepSeek via OpenRouter for demand analysis (optional, falls back to heuristic)
     """
     logger.info(f"Tourist outlook requested for {location}, {days} days")
-    
+
     try:
-        # Fetch external data
+        # Fetch external data (weather is forecast-limited internally)
         weather_data = await fetch_weather_data(days)
         traffic_data = await fetch_traffic_data()
         events = load_events()
-        
-        # Generate outlook for each day
-        outlook = []
+
+        outlook: List[TouristPulseOutlook] = []
         start_date = date.today()
-        
-        for i in range(min(days, len(weather_data.get("daily", {}).get("time", [])))):
+
+        available_dates = weather_data.get("daily", {}).get("time", []) or []
+        available_set = set(available_dates)
+
+        # Create an outlook for each requested day
+        for i in range(days):
             current_date = start_date + timedelta(days=i)
             date_str = current_date.isoformat()
-            
-            # Get weather for this date
-            daily_weather = None
-            if "daily" in weather_data and "time" in weather_data["daily"]:
-                try:
-                    idx = weather_data["daily"]["time"].index(date_str)
-                    daily_weather = {
-                        "weathercode": weather_data["daily"]["weathercode"][idx],
-                        "temp_max": weather_data["daily"]["temperature_2m_max"][idx],
-                        "temp_min": weather_data["daily"]["temperature_2m_min"][idx],
-                        "precipitation_probability": weather_data["daily"].get("precipitation_probability_max", [0])[idx] if "precipitation_probability_max" in weather_data["daily"] else 0
-                    }
-                except (ValueError, IndexError):
-                    continue
-            
-            if not daily_weather:
-                continue
-            
-            # Find events for this date
-            day_events = [e for e in events if e.get('date') == date_str]
-            
-            # Get LLM prediction
-            weather_condition = get_weather_condition(daily_weather["weathercode"])
-            prediction = await call_llm_for_prediction(
-                date_str,
-                {
-                    "condition": weather_condition,
-                    "temp_max": daily_weather["temp_max"],
-                    "temp_min": daily_weather["temp_min"],
-                    "precipitation_probability": daily_weather["precipitation_probability"]
-                },
-                traffic_data,
-                day_events
-            )
-            
-            # Map prediction level to demand level (matching schema)
-            level_map = {
-                "low": "low",
-                "normal": "moderate",
-                "high": "high",
-                "very high": "very_high"
-            }
-            demand_level = level_map.get(prediction.get("level", "normal"), "moderate")
-            
-            # Build demand signals
-            signals = [
-                DemandSignal(
-                    source="weather",
-                    factor=weather_condition.lower(),
-                    impact="positive" if "clear" in weather_condition.lower() or "sunny" in weather_condition.lower() else "negative",
-                    weight=0.4
+
+            day_events = [e for e in events if e.get("date") == date_str]
+
+            # If the day is within forecast window, use real forecast; else baseline
+            if date_str in available_set:
+                idx = weather_data["daily"]["time"].index(date_str)
+
+                daily_weather = {
+                    "weathercode": weather_data["daily"]["weathercode"][idx],
+                    "temp_max": weather_data["daily"]["temperature_2m_max"][idx],
+                    "temp_min": weather_data["daily"]["temperature_2m_min"][idx],
+                    "precipitation_probability": (
+                        weather_data["daily"].get("precipitation_probability_max", [0])[idx]
+                        if "precipitation_probability_max" in weather_data["daily"]
+                        else 0
+                    ),
+                }
+
+                weather_condition = get_weather_condition(int(daily_weather["weathercode"]))
+
+                prediction = await call_llm_for_prediction(
+                    date_str,
+                    {
+                        "condition": weather_condition,
+                        "temp_max": daily_weather["temp_max"],
+                        "temp_min": daily_weather["temp_min"],
+                        "precipitation_probability": daily_weather["precipitation_probability"],
+                    },
+                    traffic_data,
+                    day_events,
                 )
-            ]
-            
-            if day_events:
-                signals.append(
+
+                level_map = {
+                    "low": "low",
+                    "normal": "moderate",
+                    "high": "high",
+                    "very high": "very_high",
+                }
+                demand_level = level_map.get(prediction.get("level", "normal"), "moderate")
+
+                signals: List[DemandSignal] = [
                     DemandSignal(
-                        source="events",
-                        factor=f"{len(day_events)} event(s)",
-                        impact="positive",
-                        weight=0.3
+                        source="weather",
+                        factor=weather_condition.lower(),
+                        impact="positive" if ("clear" in weather_condition.lower() or "sunny" in weather_condition.lower()) else "negative",
+                        weight=0.4,
+                    )
+                ]
+
+                if day_events:
+                    signals.append(
+                        DemandSignal(
+                            source="events",
+                            factor=f"{len(day_events)} event(s)",
+                            impact="positive",
+                            weight=0.3,
+                        )
+                    )
+
+                # include traffic signal even if congestionLevel is 0.0
+                if traffic_data.get("flow", {}).get("congestionLevel") is not None:
+                    signals.append(
+                        DemandSignal(
+                            source="traffic",
+                            factor="congestion",
+                            impact="positive",
+                            weight=0.3,
+                        )
+                    )
+
+                outlook.append(
+                    TouristPulseOutlook(
+                        date=current_date,
+                        demand_level=demand_level,
+                        confidence=float(prediction.get("confidence", 0.6)),
+                        drivers=signals,
+                        summary=prediction.get("reasoning", f"Tourism level: {demand_level}"),
                     )
                 )
-            
-            if traffic_data.get("flow", {}).get("congestionLevel"):
-                signals.append(
+
+            else:
+                # Beyond forecast horizon: baseline outlook with explicit lower confidence
+                baseline_signals: List[DemandSignal] = []
+                if day_events:
+                    baseline_signals.append(
+                        DemandSignal(
+                            source="events",
+                            factor=f"{len(day_events)} event(s)",
+                            impact="positive",
+                            weight=0.4,
+                        )
+                    )
+                baseline_signals.append(
                     DemandSignal(
-                        source="traffic",
-                        factor="congestion",
-                        impact="positive",
-                        weight=0.3
+                        source="forecast",
+                        factor="beyond_forecast_window",
+                        impact="neutral",
+                        weight=0.0,
                     )
                 )
-            
-            outlook.append(
-                TouristPulseOutlook(
-                    date=current_date,
-                    demand_level=demand_level,
-                    confidence=prediction.get("confidence", 0.6),
-                    drivers=signals,
-                    summary=prediction.get("reasoning", f"Tourism level: {demand_level}")
+
+                outlook.append(
+                    TouristPulseOutlook(
+                        date=current_date,
+                        demand_level="moderate",
+                        confidence=0.35 if not day_events else 0.45,
+                        drivers=baseline_signals,
+                        summary="Beyond the reliable weather forecast window; showing baseline demand with lower confidence.",
+                    )
                 )
-            )
-        
+
         return TouristPulseResponse(
             location=location,
             outlook=outlook,
-            generated_at=datetime.utcnow().isoformat()
+            generated_at=datetime.utcnow().isoformat(),
         )
-        
+
     except HTTPException as e:
-        # Re-raise HTTP exceptions (like from fetch_weather_data)
         logger.error(f"HTTPException in tourist outlook: {e.detail}")
         raise
     except Exception as e:
         logger.error(f"Failed to generate tourist outlook: {e}", exc_info=True)
-        # Return error details in response for debugging
-        error_msg = str(e)
-        error_type = type(e).__name__
         raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to generate outlook: {error_type}: {error_msg}. Check backend logs for details."
+            status_code=500,
+            detail=f"Failed to generate outlook: {type(e).__name__}: {str(e)}. Check backend logs for details.",
         )
