@@ -15,11 +15,13 @@ from app.schemas.cashflow import (
 )
 from app.services.pos_parser import POSParser, POSParseError
 from app.services.cashflow_engine import CashFlowEngine
+from app.services.cashflow_advisor import CashFlowAdvisor
 from app.services.llm_router import LLMRouter
 from app.services.cache import CacheService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cashflow", tags=["cashflow"])
+advisor = CashFlowAdvisor()
 
 
 @router.post("/analyze", response_model=CashFlowAnalysisResponse)
@@ -28,6 +30,12 @@ async def analyze_cashflow(
     rent: float = Form(..., gt=0, description="Monthly rent"),
     payroll: float = Form(..., ge=0, description="Monthly payroll"),
     other: float = Form(..., ge=0, description="Other monthly fixed costs"),
+    variable_cost_rate: float = Form(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="COGS/fees as fraction of revenue (0..1)"
+    ),
     cash_on_hand: Optional[float] = Form(None, ge=0, description="Current cash reserves"),
     business_name: Optional[str] = Form(None, description="Business name"),
     db: Session = Depends(get_db)
@@ -60,7 +68,7 @@ async def analyze_cashflow(
         }
         
         # Compute metrics
-        metrics = CashFlowEngine.compute_metrics(daily_revenue_list, fixed_costs)
+        metrics = CashFlowEngine.compute_metrics(daily_revenue_list, fixed_costs, variable_cost_rate=variable_cost_rate)
         
         # Create analysis record
         analysis = Analysis(
@@ -96,9 +104,9 @@ async def analyze_cashflow(
         
         logger.info(f"Created analysis {analysis.id} with {len(daily_revenue_list)} days")
         
-        # Get LLM explanation (with caching and fallback)
+        # Get LLM explanation (with caching)
         cache_key = LLMRouter.generate_cache_key(
-            {"metrics": metrics, "fixed_costs": fixed_costs},
+            {"metrics": metrics, "fixed_costs": fixed_costs, "variable_cost_rate": variable_cost_rate},
             "deepseek-r1"
         )
         
@@ -106,30 +114,9 @@ async def analyze_cashflow(
         
         if cached_explanation:
             explanation_dict = cached_explanation
-            logger.info("Using cached LLM response")
         else:
-            try:
-                logger.info("Calling DeepSeek R1 for explanation")
-                explanation_dict = await LLMRouter.call_deepseek_r1(metrics, fixed_costs)
-                CacheService.set_llm_output(db, cache_key, "deepseek-r1", explanation_dict)
-                logger.info("LLM response cached successfully")
-            except Exception as e:
-                logger.warning(f"LLM call failed, using fallback: {type(e).__name__}: {str(e)}")
-                # Fallback explanation - works without AI
-                explanation_dict = {
-                    "bullets": [
-                        f"Average daily revenue: ${metrics['avg_daily_revenue']:.2f}",
-                        f"Revenue trend (30-day): {metrics['trend_30d']:.1f}%",
-                        f"Business risk state: {metrics['risk_state']}",
-                        f"Fixed cost burden: {metrics['fixed_cost_burden']:.1%} of revenue"
-                    ],
-                    "actions": [
-                        "Monitor daily cash flow trends",
-                        "Review fixed cost structure for optimization",
-                        "Build emergency cash reserves"
-                    ],
-                    "confidence_note": f"Analysis based on {len(daily_revenue_list)} days with {metrics['confidence']:.1%} confidence"
-                }
+            explanation_dict = await LLMRouter.call_deepseek_r1(metrics, {**fixed_costs, "variable_cost_rate": variable_cost_rate})
+            CacheService.set_llm_output(db, cache_key, "deepseek-r1", explanation_dict)
         
         # Build response
         return CashFlowAnalysisResponse(
@@ -220,7 +207,7 @@ async def get_analysis(
         "cash_on_hand": fixed_costs.cash_on_hand
     }
     
-    metrics = CashFlowEngine.compute_metrics(revenue_list, fixed_costs_dict)
+    metrics = CashFlowEngine.compute_metrics(revenue_list, fixed_costs_dict, variable_cost_rate=0.0)
     
     return {
         "analysis_id": analysis.id,
