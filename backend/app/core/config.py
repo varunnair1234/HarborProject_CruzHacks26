@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     
     # API Keys
     openrouter_api_key: str
+    secret_key: str
+    access_token_expire_minutes: int = 30
     
     # LLM Models
     deepseek_r1_model: str = "deepseek/deepseek-r1"
