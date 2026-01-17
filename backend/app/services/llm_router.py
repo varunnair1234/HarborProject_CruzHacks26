@@ -189,7 +189,7 @@ Be honest but constructive. Focus on actionable advice."""
     async def call_gemini(business_profile: Dict, ranking_context: Dict) -> Dict:
         """
         Call Gemini 2 Flash for Shopline featured business blurbs
-        
+
         Returns JSON with: blurb, highlights, score
         """
         prompt = f"""Generate a compelling featured business description.
@@ -209,7 +209,7 @@ Create JSON with:
 Make it appealing but honest. Score should reflect local appeal, uniqueness, and quality."""
 
         url = f"{LLMRouter.GEMINI_BASE_URL}/{settings.gemini_model}:generateContent?key={settings.google_api_key}"
-        
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 url,
@@ -225,16 +225,16 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
                 }
             )
             response.raise_for_status()
-            
+
             result = response.json()
             content = result["candidates"][0]["content"]["parts"][0]["text"]
-            
+
             try:
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
                     content = content.split("```")[1].split("```")[0].strip()
-                
+
                 parsed = json.loads(content)
                 logger.info("Gemini response parsed successfully")
                 return parsed
@@ -244,4 +244,158 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
                     "blurb": f"Featured local business in {business_profile.get('category')}",
                     "highlights": ["Local favorite", "Quality service", "Community focused"],
                     "score": 75.0
+                }
+
+    @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10)
+    )
+    async def call_shopline_analyst(input_data: Dict) -> Dict:
+        """
+        Call Gemini for Shopline business analysis
+
+        Returns comprehensive business analysis with diagnosis, outlook, and actions
+        """
+        input_json = json.dumps(input_data, ensure_ascii=False, default=str)
+
+        prompt = f"""<identity>
+You are SantaCruz Shopline's on-demand business analyst for small retail and food businesses in Santa Cruz, CA.
+Your job is to convert structured business + local-signal inputs into clear, actionable, low-risk guidance.
+</identity>
+
+<context>
+SantaCruz Shopline helps local operators understand what's driving sales (and what's not) using:
+- business performance signals (revenue trend, volatility, fixed cost burden, runway)
+- local demand signals (weather, events, seasonality, day-of-week, foot-traffic proxies)
+You must stay grounded in the provided inputs only.
+</context>
+
+<hard_rules>
+- Do NOT invent facts, numbers, events, weather, or performance results not included in the input.
+- Do NOT claim certainty or guarantees; use probabilistic language.
+- Do NOT recommend illegal, unsafe, discriminatory, or privacy-invasive actions.
+- Do NOT reference private or personal data.
+- Do NOT output markdown, code fences, or extra text outside the JSON response.
+- If key inputs are missing or inconsistent, say so in "limitations" and lower confidence.
+</hard_rules>
+
+<task>
+Given the structured input JSON, produce a Shopline-style analysis for a Santa Cruz business for the next 7 days.
+
+You must:
+1) Summarize business health from the metrics (trend/volatility/fixed costs/runway/risk state).
+2) Explain what local demand signals imply for the next week (only if provided).
+3) Produce 3–5 prioritized actions that are:
+   - specific
+   - realistic for a small business
+   - tied directly to the signals
+   - low-cost / low-risk where possible
+4) Provide a short "watchlist" (what to monitor daily).
+5) Provide a confidence score (0–1) based on signal alignment + data completeness.
+</task>
+
+<output_format>
+Return ONLY valid JSON matching this exact schema:
+
+{{
+  "summary": string,
+  "diagnosis": {{
+    "state": "healthy" | "caution" | "risk",
+    "why": [string, string, string]
+  }},
+  "next_7_days_outlook": {{
+    "demand_level": "low" | "moderate" | "high",
+    "drivers": [string, ...],
+    "suppressors": [string, ...]
+  }},
+  "prioritized_actions": [
+    {{
+      "action": string,
+      "reason": string,
+      "expected_impact": "low" | "medium" | "high",
+      "effort": "low" | "medium" | "high"
+    }}
+  ],
+  "watchlist": [string, ...],
+  "confidence": number,
+  "limitations": string
+}}
+
+Constraints:
+- diagnosis.why: exactly 3 bullets, each one sentence.
+- next_7_days_outlook.drivers: 1–4 items, one sentence each.
+- next_7_days_outlook.suppressors: 0–3 items, one sentence each.
+- prioritized_actions: 3–5 items.
+- watchlist: 3–6 items, one sentence each.
+- confidence must be between 0.0 and 1.0.
+</output_format>
+
+<input>
+BUSINESS + SIGNAL INPUT JSON:
+{input_json}
+</input>
+
+<final_instruction>
+Based only on the input JSON above, produce the JSON output now.
+</final_instruction>"""
+
+        url = f"{LLMRouter.GEMINI_BASE_URL}/{settings.gemini_model}:generateContent?key={settings.google_api_key}"
+
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "contents": [{
+                        "parts": [{"text": prompt}]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.3,
+                        "maxOutputTokens": 1500,
+                    }
+                }
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            content = result["candidates"][0]["content"]["parts"][0]["text"]
+
+            try:
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0].strip()
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0].strip()
+
+                parsed = json.loads(content)
+                logger.info("Shopline analyst response parsed successfully")
+                return parsed
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Shopline analyst response: {e}")
+                return {
+                    "summary": "Unable to generate complete analysis due to parsing error.",
+                    "diagnosis": {
+                        "state": "caution",
+                        "why": [
+                            "Analysis system encountered an error.",
+                            "Please review raw metrics manually.",
+                            "Contact support if issue persists."
+                        ]
+                    },
+                    "next_7_days_outlook": {
+                        "demand_level": "moderate",
+                        "drivers": ["Unable to determine drivers."],
+                        "suppressors": []
+                    },
+                    "prioritized_actions": [
+                        {
+                            "action": "Review business metrics manually",
+                            "reason": "Automated analysis unavailable",
+                            "expected_impact": "medium",
+                            "effort": "medium"
+                        }
+                    ],
+                    "watchlist": ["Daily revenue", "Customer traffic", "Weather conditions"],
+                    "confidence": 0.3,
+                    "limitations": "Analysis parsing failed. Results are placeholder only."
                 }
