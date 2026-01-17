@@ -190,12 +190,14 @@ def load_events() -> List[Dict[str, Any]]:
                 reader = csv.DictReader(f)
                 for row in reader:
                     if row.get("name") and row.get("date"):
+                        # Strip whitespace from date to ensure proper matching
+                        date_str = row["date"].strip()
                         events.append(
                             {
-                                "name": row["name"],
-                                "date": row["date"],
-                                "location": row.get("location", "Santa Cruz"),
-                                "type": row.get("type", "community"),
+                                "name": row["name"].strip(),
+                                "date": date_str,
+                                "location": row.get("location", "Santa Cruz").strip(),
+                                "type": row.get("type", "community").strip(),
                             }
                         )
             logger.info("✅ Loaded %s events from %s", len(events), os.path.abspath(path))
@@ -417,7 +419,9 @@ async def get_tourist_outlook(
         for item in daily_forecast:
             current_date = item["date"]
             date_str = current_date.isoformat()
-            day_events = [e for e in events if e.get("date") == date_str]
+            # Filter events for this date (strip whitespace for comparison)
+            day_events = [e for e in events if e.get("date", "").strip() == date_str]
+            logger.info("Date %s: Found %d events", date_str, len(day_events))
 
             weather_condition = item["condition"]
             prediction = await call_llm_for_prediction(
