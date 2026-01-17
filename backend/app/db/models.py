@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKe
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, Field
 
 Base = declarative_base()
 
