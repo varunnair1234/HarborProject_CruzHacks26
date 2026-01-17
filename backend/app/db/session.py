@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
@@ -18,10 +21,24 @@ from app.db.models import (  # noqa: F401
     Business,
 )
 
-DATABASE_URL = settings.database_url.strip()
+DATABASE_URL = (settings.database_url or "").strip()
 
-# ---------- Engine ----------
-def _make_engine(database_url: str):
+
+def _normalize_database_url(url: str) -> str:
+    """
+    Ensure Postgres URLs use psycopg v3 driver, not psycopg2.
+    - Supabase often provides: postgresql://...
+    - We want: postgresql+psycopg://...
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    if url.startswith("postgres://"):
+        # Older scheme; normalize to postgresql+psycopg
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    return url
+
+
+def _make_engine(database_url: str) -> Engine:
     # SQLite (local dev)
     if database_url.startswith("sqlite"):
         return create_engine(
@@ -31,13 +48,13 @@ def _make_engine(database_url: str):
         )
 
     # Postgres / Supabase
-    connect_args = {}
-    if database_url.startswith("postgresql"):
-        # Supabase requires SSL
-        connect_args = {"sslmode": "require"}
+    normalized = _normalize_database_url(database_url)
+
+    # Supabase requires SSL
+    connect_args = {"sslmode": "require"} if normalized.startswith("postgresql") else {}
 
     return create_engine(
-        database_url,
+        normalized,
         connect_args=connect_args,
         pool_pre_ping=True,
         pool_size=10,
@@ -45,9 +62,8 @@ def _make_engine(database_url: str):
     )
 
 
-engine = _make_engine(DATABASE_URL)
+engine: Engine = _make_engine(DATABASE_URL)
 
-# ---------- Session factory ----------
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
