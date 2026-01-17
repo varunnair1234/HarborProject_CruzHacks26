@@ -1702,8 +1702,9 @@
             checkAuth();
         }
 
-        // Initialize auth check on page load
+        // Initialize auth check and login form on page load
         checkAuth();
+        initLoginForm();
 
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
