@@ -32,6 +32,19 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
+          exclude-paths: |
+            backend/
+            node_modules/
+            .next/
+            .git/
+            app/
+            components/
+            public/
+            package.json
+            package-lock.json
+            next.config.js
+            tsconfig.json
+            next-env.d.ts
       
       - name: Deploy to GitHub Pages
         id: deployment
