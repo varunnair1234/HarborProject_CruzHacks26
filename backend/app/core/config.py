@@ -1,5 +1,4 @@
 from typing import Optional
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,17 +7,12 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
 
     # Database
-    database_url: str = "sqlite:///./harbor.db"
+    database_url: str = Field(default="sqlite:///./harbor.db", alias="DATABASE_URL")
 
     # API Keys
-    openrouter_api_key: Optional[str] = None
-    google_api_key: Optional[str] = None
-
-    # If you set DEEPSEEK_API_KEY in Render, this prevents the crash
-    deepseek_api_key: Optional[str] = Field(default=None, alias="DEEPSEEK_API_KEY")
-
     openrouter_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_API_KEY")
     google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+    deepseek_api_key: Optional[str] = Field(default=None, alias="DEEPSEEK_API_KEY")
 
     # LLM Models
     deepseek_r1_model: str = "deepseek/deepseek-r1"
@@ -31,10 +25,10 @@ class Settings(BaseSettings):
 
     # App Configuration
     app_version: str = "1.0.0"
-    environment: str = "development"
+    environment: str = Field(default="development", alias="ENVIRONMENT")
 
     # NWS Weather API
-    nws_user_agent: str = "harborproject.app, your_email@domain.com"
+    nws_user_agent: str = Field(default="harborproject.app, your_email@domain.com", alias="NWS_USER_AGENT")
 
     # JWT Authentication
     secret_key: str = Field(default="your-secret-key-change-in-production", alias="SECRET_KEY")
@@ -49,5 +43,4 @@ class Settings(BaseSettings):
     )
 
 
-# Global settings instance
 settings = Settings()
