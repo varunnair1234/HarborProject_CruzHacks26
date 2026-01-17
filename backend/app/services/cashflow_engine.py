@@ -1,4 +1,3 @@
-
 import logging
 from typing import Dict, List, Optional
 
@@ -13,8 +12,15 @@ class CashFlowEngine:
     # Risk thresholds
     VOLATILITY_CAUTION = 0.3  # CV > 30%
     VOLATILITY_CRITICAL = 0.5  # CV > 50%
+
+    # Fixed cost burden thresholds when burden is computed on REVENUE
     BURDEN_CAUTION = 0.7  # Fixed costs > 70% of revenue
     BURDEN_CRITICAL = 0.9  # Fixed costs > 90% of revenue
+
+    # Fixed cost burden thresholds when burden is computed on GROSS PROFIT (revenue after variable costs)
+    BURDEN_GP_CAUTION = 0.8  # Fixed costs > 80% of gross profit
+    BURDEN_GP_CRITICAL = 1.0  # Fixed costs >= 100% of gross profit (structurally unprofitable)
+
     RUNWAY_CRITICAL_DAYS = 30  # < 30 days runway is critical
     RUNWAY_CAUTION_DAYS = 60  # < 60 days runway is caution
 
@@ -34,7 +40,18 @@ class CashFlowEngine:
             days_per_month: Average number of days per month for monthly calculations
 
         Returns:
-            Dict of computed metrics (keys preserved for API compatibility)
+            Dict of computed metrics.
+            Backward-compatible keys preserved:
+              - avg_daily_revenue
+              - fixed_cost_burden  (kept as burden on revenue for historical compatibility)
+              - runway_days
+              - risk_state
+              - etc.
+            New keys added:
+              - avg_daily_gross_profit
+              - fixed_cost_burden_revenue
+              - fixed_cost_burden_gross_profit
+              - net_daily_cash_flow
         """
         if not daily_revenues:
             raise ValueError("No revenue data provided")
@@ -51,8 +68,13 @@ class CashFlowEngine:
         data_days = int(len(revenues))
 
         # Basic statistics
-        avg_daily = float(np.mean(revenues)) if data_days > 0 else 0.0
-        avg_monthly = avg_daily * float(days_per_month)
+        avg_daily_revenue = float(np.mean(revenues)) if data_days > 0 else 0.0
+        avg_monthly_revenue = avg_daily_revenue * float(days_per_month)
+
+        # Gross profit (revenue after variable costs)
+        vcr = float(variable_cost_rate)
+        avg_daily_gross_profit = avg_daily_revenue * (1.0 - vcr)
+        avg_monthly_gross_profit = avg_daily_gross_profit * float(days_per_month)
 
         # Trends (percentage change over periods)
         trend_7d = CashFlowEngine._compute_trend(revenues, 7)
@@ -60,24 +82,36 @@ class CashFlowEngine:
         trend_30d = CashFlowEngine._compute_trend(revenues, 30)
 
         # Volatility (coefficient of variation)
-        volatility = float(np.std(revenues) / avg_daily) if avg_daily > 0 else 0.0
+        volatility = float(np.std(revenues) / avg_daily_revenue) if avg_daily_revenue > 0 else 0.0
 
-        # Fixed cost burden
+        # Fixed costs
         total_fixed_monthly = (
             float(fixed_costs.get("rent", 0.0))
             + float(fixed_costs.get("payroll", 0.0))
             + float(fixed_costs.get("other", 0.0))
         )
-        fixed_cost_burden = total_fixed_monthly / avg_monthly if avg_monthly > 0 else float("inf")
+        daily_fixed_costs = total_fixed_monthly / float(days_per_month)
+
+        # Burdens
+        fixed_cost_burden_revenue = (
+            total_fixed_monthly / avg_monthly_revenue if avg_monthly_revenue > 0 else float("inf")
+        )
+        fixed_cost_burden_gross_profit = (
+            total_fixed_monthly / avg_monthly_gross_profit
+            if avg_monthly_gross_profit > 0
+            else float("inf")
+        )
+
+        # Backward compatible: keep fixed_cost_burden as burden-on-revenue
+        fixed_cost_burden = fixed_cost_burden_revenue
+
+        # Net daily cash flow (gross profit - fixed costs)
+        net_daily_cash_flow = avg_daily_gross_profit - daily_fixed_costs
 
         # Runway (if cash_on_hand is provided)
         cash_on_hand = fixed_costs.get("cash_on_hand")
         runway_days: Optional[float] = None
         if cash_on_hand is not None:
-            daily_fixed_costs = total_fixed_monthly / float(days_per_month)
-            # Net cash flow: (revenue after variable costs) - fixed costs
-            net_daily_cash_flow = (avg_daily * (1.0 - float(variable_cost_rate))) - daily_fixed_costs
-
             if net_daily_cash_flow >= 0:
                 runway_days = None  # Not burning cash on average
             else:
@@ -88,15 +122,24 @@ class CashFlowEngine:
         risk_horizon = CashFlowEngine._compute_risk_horizon(volatility, trend_30d)
 
         # Risk state assessment
+        # Use gross-profit burden when variable_cost_rate > 0, otherwise revenue burden.
+        burden_for_risk = fixed_cost_burden_gross_profit if vcr > 0 else fixed_cost_burden_revenue
+
         risk_state = CashFlowEngine._assess_risk_state(
-            volatility, fixed_cost_burden, runway_days, trend_30d
+            volatility=volatility,
+            burden_for_risk=burden_for_risk,
+            runway_days=runway_days,
+            trend_30d=trend_30d,
+            net_daily_cash_flow=net_daily_cash_flow,
+            variable_cost_rate=vcr,
         )
 
         # Confidence score (based on data quantity and quality)
         confidence = CashFlowEngine._compute_confidence(data_days, volatility)
 
         return {
-            "avg_daily_revenue": avg_daily,
+            # Existing keys
+            "avg_daily_revenue": avg_daily_revenue,
             "trend_7d": trend_7d,
             "trend_14d": trend_14d,
             "trend_30d": trend_30d,
@@ -106,6 +149,13 @@ class CashFlowEngine:
             "risk_horizon": risk_horizon,
             "risk_state": risk_state,
             "confidence": confidence,
+
+            # New keys (safe to ignore by current UI)
+            "avg_daily_gross_profit": avg_daily_gross_profit,
+            "fixed_cost_burden_revenue": fixed_cost_burden_revenue,
+            "fixed_cost_burden_gross_profit": fixed_cost_burden_gross_profit,
+            "net_daily_cash_flow": net_daily_cash_flow,
+            "days_per_month": float(days_per_month),
         }
 
     @staticmethod
@@ -152,27 +202,46 @@ class CashFlowEngine:
     @staticmethod
     def _assess_risk_state(
         volatility: float,
-        fixed_cost_burden: float,
+        burden_for_risk: float,
         runway_days: Optional[float],
         trend_30d: float,
+        net_daily_cash_flow: float,
+        variable_cost_rate: float,
     ) -> str:
-        """Assess overall risk state: healthy, caution, or critical."""
+        """Assess overall risk state: healthy, caution, or critical.
+
+        Key fix:
+        - If variable_cost_rate > 0, burden_for_risk is on gross profit.
+        - If net_daily_cash_flow < 0 and burden_for_risk >= 1.0 => structural margin issue => critical.
+        """
+
+        # Structural unprofitability (margin cannot cover fixed costs)
+        if variable_cost_rate > 0 and burden_for_risk >= CashFlowEngine.BURDEN_GP_CRITICAL:
+            return "critical"
+        if net_daily_cash_flow < 0 and variable_cost_rate > 0 and burden_for_risk >= CashFlowEngine.BURDEN_GP_CAUTION:
+            return "caution"
 
         # Critical conditions
         if runway_days is not None and runway_days < CashFlowEngine.RUNWAY_CRITICAL_DAYS:
             return "critical"
-        if fixed_cost_burden > CashFlowEngine.BURDEN_CRITICAL:
+
+        # When variable_cost_rate == 0, burden_for_risk is on revenue
+        if variable_cost_rate == 0 and burden_for_risk > CashFlowEngine.BURDEN_CRITICAL:
             return "critical"
+
         if volatility > CashFlowEngine.VOLATILITY_CRITICAL and trend_30d < -15:
             return "critical"
 
         # Caution conditions
         if runway_days is not None and runway_days < CashFlowEngine.RUNWAY_CAUTION_DAYS:
             return "caution"
-        if fixed_cost_burden > CashFlowEngine.BURDEN_CAUTION:
+
+        if variable_cost_rate == 0 and burden_for_risk > CashFlowEngine.BURDEN_CAUTION:
             return "caution"
+
         if volatility > CashFlowEngine.VOLATILITY_CAUTION:
             return "caution"
+
         if trend_30d < -10:
             return "caution"
 
