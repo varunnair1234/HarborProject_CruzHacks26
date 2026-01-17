@@ -1079,6 +1079,19 @@
             border-radius: 8px;
             border: 1px solid #e5e7eb;
         }
+
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-width: 600px;
+        }
+
+        .profile-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -1211,7 +1224,14 @@
 
         <!-- CashFlow Calm Tab -->
         <div id="cashflow" class="tab-content">
-            <h2 style="margin-bottom: 1.5rem;">CashFlow Calm - Financial Early Warning</h2>
+            <div class="section-header">
+                <div class="forecast-header">
+                    <h2 class="forecast-title">CashFlow Calm</h2>
+                    <div class="forecast-location">
+                        <span>Financial Early Warning</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="module-container">
                 <!-- Left: Form -->
@@ -1295,7 +1315,14 @@
 
         <!-- RentGuard Tab -->
         <div id="rentguard" class="tab-content">
-            <h2 style="margin-bottom: 1.5rem;">RentGuard - Rent Impact Simulator</h2>
+            <div class="section-header">
+                <div class="forecast-header">
+                    <h2 class="forecast-title">RentGuard</h2>
+                    <div class="forecast-location">
+                        <span>Rent Impact Simulator</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="module-container">
                 <!-- Left: Form -->
@@ -1368,7 +1395,14 @@
 
         <!-- Shopline Tab -->
         <div id="shopline" class="tab-content">
-            <h2 style="margin-bottom: 1.5rem;">Shopline - Local Business Discovery</h2>
+            <div class="section-header">
+                <div class="forecast-header">
+                    <h2 class="forecast-title">Shopline</h2>
+                    <div class="forecast-location">
+                        <span>Local Business Discovery</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="search-box">
                 <input type="text" id="shopline-query" placeholder="Search for local businesses (e.g., coffee shops, bookstores)">
@@ -1387,6 +1421,38 @@
                 <h3 style="margin-bottom: 1rem;">Featured Local Businesses</h3>
                 <div id="featured-loading" class="loading">Loading featured businesses</div>
                 <div id="featured-results" class="business-grid" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="profile" class="tab-content">
+            <div class="section-header">
+                <div class="forecast-header">
+                    <h2 class="forecast-title">Profile</h2>
+                </div>
+            </div>
+
+            <div id="profile-loading" class="loading">Loading profile information</div>
+            <div id="profile-error" class="error" style="display: none;"></div>
+            <div id="profile-content" style="display: none;">
+                <div class="profile-section">
+                    <div class="profile-field">
+                        <div class="profile-label">Business Name</div>
+                        <div class="profile-value" id="profile-business-name">N/A</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Email</div>
+                        <div class="profile-value" id="profile-email">N/A</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Address</div>
+                        <div class="profile-value" id="profile-address">N/A</div>
+                    </div>
+                    <div class="profile-field">
+                        <div class="profile-label">Business Type</div>
+                        <div class="profile-value" id="profile-business-type">N/A</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1751,7 +1817,6 @@
                 document.getElementById('profile-email').textContent = data.email || 'N/A';
                 document.getElementById('profile-address').textContent = data.address || 'N/A';
                 document.getElementById('profile-business-type').textContent = data.business_type || 'N/A';
-                document.getElementById('profile-id').textContent = `#${data.id || 'N/A'}`;
 
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';

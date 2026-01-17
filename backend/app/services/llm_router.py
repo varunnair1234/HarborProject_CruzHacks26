@@ -201,27 +201,34 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 500},
+                LLMRouter.OPENROUTER_BASE_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
                 },
-            )
-
-            if response.status_code >= 400:
-                safe_url = url.split("?key=")[0]
-                logger.error(f"Gemini HTTP error status={response.status_code} url={safe_url} body={response.text}")
-                # graceful fallback instead of crashing your endpoint
-                return {
-                    "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
-                    "highlights": ["Local favorite", "Quality service", "Community focused"],
-                    "score": 75.0,
+                json={
+                    "contents": [{
+                        "parts": [{"text": prompt}]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "maxOutputTokens": 500,
+                    }
                 }
+            )
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                # Log the exact status + body to diagnose auth/quota/model issues
+                status = e.response.status_code if e.response is not None else "unknown"
+                body = e.response.text if e.response is not None else ""
+                safe_url = url.split("?key=")[0]  # avoid leaking key
+                logger.error(f"Gemini HTTP error status={status} url={safe_url} body={body}")
+                raise
 
             result = response.json()
             content = result["candidates"][0]["content"]["parts"][0]["text"]
-
+            
             try:
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
