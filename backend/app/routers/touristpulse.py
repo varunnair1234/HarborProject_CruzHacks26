@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from collections import defaultdict
 import logging
 import httpx
@@ -86,8 +86,7 @@ async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
 
 
 def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
-    """Convert NWS forecast periods into daily summaries."""
-    from datetime import date, timedelta
+    """Convert NWS forecast periods into daily summaries.""", timedelta
     
     today = date.today()
     logger.info("Filtering forecast: today is %s, requesting %d days", today, days)
