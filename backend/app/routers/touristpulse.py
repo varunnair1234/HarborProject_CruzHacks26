@@ -87,6 +87,9 @@ async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
 
 def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
     """Convert NWS forecast periods into daily summaries."""
+    from datetime import date
+    
+    today = date.today()
     grouped = defaultdict(list)
     for p in periods:
         start_time = p.get("startTime")
@@ -101,10 +104,15 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
         except Exception:
             continue
 
-        grouped[dt.date()].append(p)
+        period_date = dt.date()
+        # Only include dates from today onwards (filter out past dates)
+        if period_date >= today:
+            grouped[period_date].append(p)
 
     daily: List[dict] = []
-    for d in sorted(grouped.keys())[:days]:
+    # Sort dates and take only future dates, limit to requested days
+    sorted_dates = sorted([d for d in grouped.keys() if d >= today])[:days]
+    for d in sorted_dates:
         ps = grouped[d]
 
         temps = [p.get("temperature") for p in ps if isinstance(p.get("temperature"), (int, float))]
