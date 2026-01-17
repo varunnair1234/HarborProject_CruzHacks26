@@ -27,6 +27,8 @@ SANTA_CRUZ_LON = -122.0308
 
 async def fetch_weather_data(days: int = 15) -> Dict:
     """Fetch weather data from Open-Meteo API"""
+    # Open-Meteo API allows 0-15 days (not 16!)
+    days = min(days, 15)
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={SANTA_CRUZ_LAT}&longitude={SANTA_CRUZ_LON}&hourly=temperature_2m,weathercode,precipitation_probability&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America%2FLos_Angeles&forecast_days={days}"
         
