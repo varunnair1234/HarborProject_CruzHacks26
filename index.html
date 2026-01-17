@@ -1493,20 +1493,19 @@
         // Initialize login form when DOM is ready
         function initLoginForm() {
             const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                // Remove any existing listeners
-                const newForm = loginForm.cloneNode(true);
-                loginForm.parentNode.replaceChild(newForm, loginForm);
+            if (loginForm && !loginForm.dataset.initialized) {
+                // Mark as initialized to prevent duplicate listeners
+                loginForm.dataset.initialized = 'true';
                 
                 // Add submit listener
-                newForm.addEventListener('submit', (e) => {
+                loginForm.addEventListener('submit', (e) => {
                     e.preventDefault();
                     console.log('Form submit event triggered');
                     handleLogin(e);
                 });
                 
                 // Also add click listener to button as backup
-                const loginBtn = newForm.querySelector('button[type="submit"]');
+                const loginBtn = loginForm.querySelector('button[type="submit"]');
                 if (loginBtn) {
                     loginBtn.addEventListener('click', (e) => {
                         e.preventDefault();
@@ -1515,8 +1514,6 @@
                     });
                 }
                 console.log('Login form initialized');
-            } else {
-                console.error('Login form not found during initialization');
             }
         }
 
@@ -1702,9 +1699,17 @@
             checkAuth();
         }
 
-        // Initialize auth check and login form on page load
+        // Initialize auth check on page load
         checkAuth();
-        initLoginForm();
+        
+        // Initialize login form after a short delay to ensure DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initLoginForm, 100);
+            });
+        } else {
+            setTimeout(initLoginForm, 100);
+        }
 
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
