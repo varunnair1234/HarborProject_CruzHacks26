@@ -1679,6 +1679,12 @@
             });
         });
 
+        // Ensure login form submission works
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', handleLogin);
+        }
+
         function showTab(tabName) {
             // Prevent access to protected tabs if not authenticated
             if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard', 'profile'].includes(tabName)) {
