@@ -1568,6 +1568,23 @@
             });
         }
 
+        function formatDateWithDay(dateString) {
+            // Handle both date strings and date objects
+            let date;
+            if (typeof dateString === 'string') {
+                const [year, month, day] = dateString.split('-').map(Number);
+                date = new Date(year, month - 1, day);
+            } else {
+                date = new Date(dateString);
+            }
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateStr = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+            return { dayName, dateStr };
+        }
+
         function formatDateTime(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', {
