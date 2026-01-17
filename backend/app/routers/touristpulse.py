@@ -29,7 +29,6 @@ async def fetch_weather_data(days: int = 30) -> Dict:
     """Fetch weather data from Open-Meteo API (no API key required - it's free and open source)"""
     # Limit to 16 days (Open-Meteo's max for free tier)
     days = min(days, 16)
-    
     try:
         # Open-Meteo is free and doesn't require an API key
         # It uses latitude/longitude coordinates in the URL
