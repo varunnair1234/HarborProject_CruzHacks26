@@ -476,6 +476,13 @@ async def get_tourist_outlook(
             # Filter events for this date (strip whitespace for comparison)
             day_events = [e for e in events if e.get("date", "").strip() == date_str]
             logger.info("Date %s: Found %d events", date_str, len(day_events))
+            if day_events:
+                logger.info("  Events for %s: %s", date_str, [e.get("name") for e in day_events])
+            # Debug: check if any events have dates that are close but not exact matches
+            all_event_dates = [e.get("date", "").strip() for e in events]
+            nearby_dates = [d for d in all_event_dates if d and abs((datetime.fromisoformat(d).date() - current_date).days) <= 1]
+            if nearby_dates and date_str not in nearby_dates:
+                logger.warning("  Nearby event dates found: %s (looking for %s)", set(nearby_dates), date_str)
 
             weather_condition = item["condition"]
             prediction = await call_llm_for_prediction(
