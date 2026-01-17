@@ -195,7 +195,7 @@ WEATHER DATA:
 - Precipitation Probability: {weather['precipitation_probability']}%
 
 TRAFFIC DATA:
-- Congestion Level: {traffic['congestionLevel'] * 100 if traffic['congestionLevel'] else 0:.0f}%
+- Congestion Level: {traffic.get('flow', {}).get('congestionLevel', 0) * 100 if traffic.get('flow', {}).get('congestionLevel') else 0:.0f}%
 - Traffic Incidents: {len(traffic.get('incidents', []))}
 
 EVENTS:
