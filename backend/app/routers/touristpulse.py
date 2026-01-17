@@ -47,8 +47,9 @@ async def fetch_weather_data(requested_days: int = 30) -> Dict:
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={SANTA_CRUZ_LAT}"
         f"&longitude={SANTA_CRUZ_LON}"
-        "&hourly=temperature_2m,weathercode,precipitation_probability"
-        "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
+        "&hourly=temperature_2m,weather_code,precipitation_probability"
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
+        "&temperature_unit=fahrenheit"
         "&timezone=America%2FLos_Angeles"
         f"&forecast_days={forecast_days}"
     )
@@ -330,8 +331,10 @@ async def get_tourist_outlook(
             if date_str in available_set:
                 idx = weather_data["daily"]["time"].index(date_str)
 
+                # Open-Meteo returns weather_code (with underscore) in the response
+                weather_code_key = "weather_code" if "weather_code" in weather_data["daily"] else "weathercode"
                 daily_weather = {
-                    "weathercode": weather_data["daily"]["weathercode"][idx],
+                    "weathercode": weather_data["daily"][weather_code_key][idx],
                     "temp_max": weather_data["daily"]["temperature_2m_max"][idx],
                     "temp_min": weather_data["daily"]["temperature_2m_min"][idx],
                     "precipitation_probability": (
