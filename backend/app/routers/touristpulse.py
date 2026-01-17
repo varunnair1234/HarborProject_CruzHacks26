@@ -25,49 +25,26 @@ SANTA_CRUZ_LAT = 36.9741
 SANTA_CRUZ_LON = -122.0308
 
 
-async def fetch_weather_data(days: int = 30) -> Dict:
-    """Fetch weather data from Open-Meteo API (no API key required - it's free and open source)"""
-    # Limit to 16 days (Open-Meteo's max for free tier)
-    days = min(days, 16)
+async def fetch_weather_data(days: int = 15) -> Dict:
+    """Fetch weather data from Open-Meteo API"""
     try:
-        # Open-Meteo is free and doesn't require an API key
-        # It uses latitude/longitude coordinates in the URL
         url = f"https://api.open-meteo.com/v1/forecast?latitude={SANTA_CRUZ_LAT}&longitude={SANTA_CRUZ_LON}&hourly=temperature_2m,weathercode,precipitation_probability&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America%2FLos_Angeles&forecast_days={days}"
         
-        logger.info(f"Fetching weather data from Open-Meteo (no API key needed)...")
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:  # Increased timeout to 30 seconds
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(url)
             response.raise_for_status()
             data = response.json()
-            
-            # Validate response
-            if "daily" not in data or "time" not in data["daily"]:
-                logger.warning("Weather API returned unexpected format")
-                raise HTTPException(status_code=500, detail="Weather API returned invalid data format")
-            
-            days_received = len(data.get('daily', {}).get('time', []))
-            logger.info(f"✅ Successfully fetched weather data: {days_received} days")
+            logger.info(f"Successfully fetched weather data: {len(data.get('daily', {}).get('time', []))} days")
             return data
-            
     except httpx.TimeoutException as e:
-        logger.error(f"Weather API timeout after 30 seconds: {e}")
-        raise HTTPException(status_code=500, detail="Weather API request timed out. The service may be slow or unavailable.")
+        logger.error(f"Weather API timeout: {e}")
+        raise HTTPException(status_code=500, detail="Weather API request timed out")
     except httpx.HTTPStatusError as e:
         logger.error(f"Weather API HTTP error: {e.response.status_code} - {e.response.text}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Weather API error: {e.response.status_code}. Response: {e.response.text[:200]}"
-        )
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
+        raise HTTPException(status_code=500, detail=f"Weather API error: {e.response.status_code}")
     except Exception as e:
         logger.error(f"Failed to fetch weather data: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to fetch weather data: {type(e).__name__}: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
 
 
 async def fetch_traffic_data() -> Dict:
