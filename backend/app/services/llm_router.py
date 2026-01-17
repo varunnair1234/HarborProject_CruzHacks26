@@ -195,38 +195,38 @@ Create JSON with:
 
 Make it appealing but honest. Score should reflect local appeal, uniqueness, and quality."""
 
-        url = f"{LLMRouter.GEMINI_BASE_URL}/{settings.gemini_model}:generateContent?key={settings.google_api_key}"
-        
-        if not settings.google_api_key:
-            logger.error("Missing GOOGLE_API_KEY (settings.google_api_key) for Gemini call")
-            raise ValueError("Missing GOOGLE_API_KEY")
-        
+        # Route Gemini via OpenRouter so we can reuse the same OPENROUTER_API_KEY
+        if not settings.openrouter_api_key:
+            logger.error("Missing OPENROUTER_API_KEY (settings.openrouter_api_key) for Gemini(OpenRouter) call")
+            raise ValueError("Missing OPENROUTER_API_KEY")
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                url,
-                headers={"Content-Type": "application/json"},
+                LLMRouter.OPENROUTER_BASE_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                },
                 json={
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.7,
-                        "maxOutputTokens": 500,
-                    }
-                }
+                    # IMPORTANT: settings.gemini_model must be an OpenRouter model id
+                    # e.g. "google/gemini-1.5-flash"
+                    "model": settings.gemini_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 500,
+                },
             )
+
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
-                # Log the exact status + body to diagnose auth/quota/model issues
                 status = e.response.status_code if e.response is not None else "unknown"
                 body = e.response.text if e.response is not None else ""
-                safe_url = url.split("?key=")[0]  # avoid leaking key
-                logger.error(f"Gemini HTTP error status={status} url={safe_url} body={body}")
+                logger.error(f"Gemini(OpenRouter) HTTP error status={status} body={body}")
                 raise
 
             result = response.json()
-            content = result["candidates"][0]["content"]["parts"][0]["text"]
+            content = result["choices"][0]["message"]["content"]
             
             try:
                 if "```json" in content:
