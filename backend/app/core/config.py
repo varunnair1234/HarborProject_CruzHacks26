@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # NWS Weather API
     nws_user_agent: str = "harborproject.app, your_email@domain.com"
 
+    # JWT Authentication
+    secret_key: str = Field(default="your-secret-key-change-in-production", alias="SECRET_KEY")
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

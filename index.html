@@ -789,6 +789,108 @@
             gap: 1rem;
             margin: 1rem 0;
         }
+
+        /* Auth Styles */
+        .auth-container {
+            max-width: 500px;
+            margin: 3rem auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .auth-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .auth-tab.active {
+            color: #0A4D68;
+            border-bottom-color: #0A4D68;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .auth-form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .auth-form-group input,
+        .auth-form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .auth-form-group input:focus,
+        .auth-form-group select:focus {
+            outline: none;
+            border-color: #0A4D68;
+        }
+
+        .auth-error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .auth-success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .logout-btn {
+            margin-left: auto;
+            padding: 0.5rem 1rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -796,16 +898,75 @@
         <h1>Harbor</h1>
         <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-button active" data-tab="touristpulse">TouristPulse</button>
-            <button class="tab-button" data-tab="cashflow">CashFlow Calm</button>
-            <button class="tab-button" data-tab="rentguard">RentGuard</button>
-            <button class="tab-button" data-tab="shopline">Shopline</button>
+        <!-- Auth Container (shown when not logged in) -->
+        <div id="auth-container" class="auth-container">
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthForm('login')">Login</button>
+                <button class="auth-tab" onclick="showAuthForm('signup')">Sign Up</button>
+            </div>
+
+            <div id="auth-error" class="auth-error"></div>
+            <div id="auth-success" class="auth-success"></div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="auth-form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form" onsubmit="handleSignup(event)">
+                <div class="auth-form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-business-name">Business Name</label>
+                    <input type="text" id="signup-business-name" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-address">Address</label>
+                    <input type="text" id="signup-address" required>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-business-type">Business Type</label>
+                    <select id="signup-business-type" required>
+                        <option value="">Select a type</option>
+                        <option value="cafe">Cafe</option>
+                        <option value="boutique">Boutique</option>
+                        <option value="bakery/dessert">Bakery/Dessert</option>
+                        <option value="bookstore/stationary">Bookstore/Stationary</option>
+                        <option value="art">Art</option>
+                    </select>
+                </div>
+                <div class="auth-form-group">
+                    <label for="signup-password">Password (min 8 characters)</label>
+                    <input type="password" id="signup-password" minlength="8" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
         </div>
 
+        <!-- Main App (shown when logged in) -->
+        <div id="main-app" style="display: none;">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-button active" data-tab="touristpulse">TouristPulse</button>
+                <button class="tab-button" data-tab="cashflow">CashFlow Calm</button>
+                <button class="tab-button" data-tab="rentguard">RentGuard</button>
+                <button class="tab-button" data-tab="shopline">Shopline</button>
+                <button class="logout-btn" onclick="handleLogout()">Logout</button>
+            </div>
+
         <!-- TouristPulse Tab -->
-        <div id="touristpulse" class="tab-content active">
+        <div id="touristpulse" class="tab-content">
             <div class="section-header">
                 <h2>7-Day Tourism Forecast for Santa Cruz</h2>
                 <button class="refresh-btn" onclick="loadTouristOutlook()" id="refresh-tourist-btn">Refresh</button>
@@ -1004,10 +1165,23 @@
 
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.addEventListener('click', () => showTab(btn.dataset.tab));
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                // Check if user is trying to access protected tab
+                if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard'].includes(tabName)) {
+                    alert('Please login to access this feature');
+                    return;
+                }
+                showTab(tabName);
+            });
         });
 
         function showTab(tabName) {
+            // Prevent access to protected tabs if not authenticated
+            if (!isAuthenticated() && ['touristpulse', 'cashflow', 'rentguard'].includes(tabName)) {
+                return;
+            }
+
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -1015,8 +1189,13 @@
                 btn.classList.remove('active');
             });
 
-            document.getElementById(tabName).classList.add('active');
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            const tabElement = document.getElementById(tabName);
+            const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
+            
+            if (tabElement && tabButton) {
+                tabElement.classList.add('active');
+                tabButton.classList.add('active');
+            }
 
             // Load data when switching to certain tabs
             if (tabName === 'rentguard') {
@@ -1025,6 +1204,8 @@
                 loadPreviousAnalyses();
             } else if (tabName === 'shopline') {
                 loadFeaturedBusinesses();
+            } else if (tabName === 'touristpulse') {
+                loadTouristOutlook();
             }
         }
 
@@ -1095,7 +1276,10 @@
                 outlookEl.style.display = 'none';
 
                 const response = await fetch(
-                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=7`
+                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=7`,
+                    {
+                        headers: getAuthHeaders()
+                    }
                 );
 
                 if (!response.ok) {
@@ -1313,8 +1497,12 @@
                 if (cashOnHand) formData.append('cash_on_hand', cashOnHand);
                 if (businessName) formData.append('business_name', businessName);
 
+                // FormData: Don't set Content-Type, browser sets it with boundary
+                const token = getAuthToken();
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const response = await fetch(`${BACKEND_URL}/cashflow/analyze`, {
                     method: 'POST',
+                    headers: headers,
                     body: formData
                 });
 
@@ -1400,7 +1588,9 @@
             const analysesList = document.getElementById('analyses-list');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=5`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=5`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) return;
 
                 const analyses = await response.json();
@@ -1428,7 +1618,9 @@
 
         async function loadAnalysisDetails(analysisId) {
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses/${analysisId}`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses/${analysisId}`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) throw new Error('Failed to load analysis');
 
                 const data = await response.json();
@@ -1462,7 +1654,9 @@
             const selectEl = document.getElementById('analysis-select');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=20`);
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=20`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) throw new Error('Failed to load analyses');
 
                 const analyses = await response.json();
@@ -1535,9 +1729,10 @@
                 if (newRent) payload.new_rent = parseFloat(newRent);
                 if (effectiveDate) payload.effective_date = effectiveDate;
 
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
                 const response = await fetch(`${BACKEND_URL}/rentguard/impact`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(payload)
                 });
 
@@ -1642,7 +1837,9 @@
             const scenariosList = document.getElementById('scenarios-list');
 
             try {
-                const response = await fetch(`${BACKEND_URL}/rentguard/scenarios/${analysisId}`);
+                const response = await fetch(`${BACKEND_URL}/rentguard/scenarios/${analysisId}`, {
+                    headers: getAuthHeaders()
+                });
                 if (!response.ok) return;
 
                 const scenarios = await response.json();

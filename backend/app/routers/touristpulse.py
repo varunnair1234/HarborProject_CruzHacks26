@@ -12,6 +12,8 @@ import re
 from typing import List, Dict, Any
 
 from app.db.session import get_db
+from app.db.models import Business
+from app.core.dependencies import get_current_business
 from app.schemas.touristpulse import (
     TouristPulseResponse,
     TouristPulseOutlook,
@@ -535,6 +537,7 @@ async def get_tourist_outlook(
     location: str = "Santa Cruz",
     days: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     Get tourist demand outlook for a location.

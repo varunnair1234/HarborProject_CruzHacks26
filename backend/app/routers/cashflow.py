@@ -5,7 +5,8 @@ from datetime import datetime
 import logging
 
 from app.db.session import get_db
-from app.db.models import Analysis, DailyRevenue, FixedCost
+from app.db.models import Analysis, DailyRevenue, FixedCost, Business
+from app.core.dependencies import get_current_business
 from app.schemas.cashflow import (
     FixedCostsInput,
     CashFlowAnalysisResponse,
@@ -38,7 +39,8 @@ async def analyze_cashflow(
     ),
     cash_on_hand: Optional[float] = Form(None, ge=0, description="Current cash reserves"),
     business_name: Optional[str] = Form(None, description="Business name"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     Analyze cash flow from POS CSV upload
@@ -75,7 +77,8 @@ async def analyze_cashflow(
             business_name=final_business_name,
             data_days=len(daily_revenue_list),
             risk_state=metrics["risk_state"],
-            confidence=metrics["confidence"]
+            confidence=metrics["confidence"],
+            business_id=current_business.id
         )
         db.add(analysis)
         db.flush()  # Get ID
@@ -144,7 +147,8 @@ async def analyze_cashflow(
 async def list_analyses(
     limit: int = 10,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     List past analyses
@@ -153,6 +157,7 @@ async def list_analyses(
     """
     analyses = (
         db.query(Analysis)
+        .filter(Analysis.business_id == current_business.id)
         .order_by(Analysis.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -175,14 +180,18 @@ async def list_analyses(
 @router.get("/analyses/{analysis_id}")
 async def get_analysis(
     analysis_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_business: Business = Depends(get_current_business)
 ):
     """
     Get detailed analysis by ID
     
     Returns full analysis with metrics and revenue data
     """
-    analysis = db.query(Analysis).filter(Analysis.id == analysis_id).first()
+    analysis = db.query(Analysis).filter(
+        Analysis.id == analysis_id,
+        Analysis.business_id == current_business.id
+    ).first()
     
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")

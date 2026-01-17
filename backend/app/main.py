@@ -6,7 +6,7 @@ import logging
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.session import init_db
-from app.routers import health, cashflow, rentguard, touristpulse, shopline
+from app.routers import health, cashflow, rentguard, touristpulse, shopline, auth
 
 # Setup logging
 setup_logging()
@@ -62,6 +62,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(cashflow.router)
 app.include_router(rentguard.router)
 app.include_router(touristpulse.router)

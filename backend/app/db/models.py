@@ -16,11 +16,13 @@ class Analysis(Base):
     data_days = Column(Integer, nullable=False)
     risk_state = Column(String(50), nullable=False)  # healthy, caution, critical
     confidence = Column(Float, nullable=False)  # 0.0 to 1.0
+    business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True)
     
     # Relationships
     daily_revenues = relationship("DailyRevenue", back_populates="analysis", cascade="all, delete-orphan")
     fixed_costs = relationship("FixedCost", back_populates="analysis", cascade="all, delete-orphan", uselist=False)
     rent_scenarios = relationship("RentScenario", back_populates="analysis", cascade="all, delete-orphan")
+    business = relationship("Business", back_populates="analyses")
 
 
 class DailyRevenue(Base):
@@ -90,3 +92,20 @@ class ExternalCache(Base):
     payload = Column(Text, nullable=False)  # JSON string
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
+
+
+class Business(Base):
+    """Business user accounts"""
+    __tablename__ = "businesses"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    business_name = Column(String(255), nullable=False)
+    address = Column(String(500), nullable=False)
+    business_type = Column(String(50), nullable=False)  # cafe, boutique, bakery/dessert, bookstore/stationary, art
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    
+    # Relationship to analyses
+    analyses = relationship("Analysis", back_populates="business")
