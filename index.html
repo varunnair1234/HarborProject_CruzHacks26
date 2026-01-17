@@ -1236,14 +1236,16 @@
 
         // ===== Auth State Management =====
         function getAuthToken() {
-            return localStorage.getItem('auth_token');
+            return localStorage.getItem('access_token') || localStorage.getItem('auth_token');
         }
 
         function setAuthToken(token) {
-            localStorage.setItem('auth_token', token);
+            localStorage.setItem('access_token', token);
+            localStorage.setItem('auth_token', token); // Keep both for compatibility
         }
 
         function removeAuthToken() {
+            localStorage.removeItem('access_token');
             localStorage.removeItem('auth_token');
         }
 
