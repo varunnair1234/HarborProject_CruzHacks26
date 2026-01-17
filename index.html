@@ -46,10 +46,11 @@
             margin-bottom: 2rem;
             border-bottom: 2px solid #e5e7eb;
             padding-bottom: 0;
+            flex-wrap: wrap;
         }
 
         .tab-button {
-            padding: 1rem 2rem;
+            padding: 1rem 1.5rem;
             background: transparent;
             border: none;
             border-bottom: 3px solid transparent;
@@ -78,12 +79,24 @@
             display: block;
         }
 
-        /* TouristPulse Styles */
+        /* Common Styles */
         .loading {
             text-align: center;
             padding: 3rem;
             color: #666;
             font-size: 1.1rem;
+        }
+
+        .loading::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
         }
 
         .error {
@@ -104,6 +117,16 @@
             margin-top: 0.5rem;
         }
 
+        .success-message {
+            background: #dcfce7;
+            border: 2px solid #22c55e;
+            border-radius: 8px;
+            padding: 1.5rem;
+            color: #166534;
+            margin: 1rem 0;
+        }
+
+        /* TouristPulse Styles */
         .outlook-grid {
             display: grid;
             gap: 1rem;
@@ -199,23 +222,554 @@
             color: #666;
         }
 
-        /* Module Placeholder Styles */
-        .module-placeholder {
-            background: white;
-            border-radius: 8px;
-            padding: 3rem;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        /* Module Container Styles */
+        .module-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
         }
 
-        .module-placeholder h2 {
+        @media (max-width: 900px) {
+            .module-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-panel, .results-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-panel h3, .results-panel h3 {
             color: #0A4D68;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #0A4D68;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-divider {
+            text-align: center;
+            margin: 1rem 0;
+            color: #9ca3af;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0A4D68;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #083d54;
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        /* File Input Styling */
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-input-label:hover {
+            border-color: #0A4D68;
+            color: #0A4D68;
+        }
+
+        .file-input-label.has-file {
+            border-color: #22c55e;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* Results Panel Empty State */
+        .results-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6b7280;
+        }
+
+        .results-empty svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Risk State Badges */
+        .risk-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .risk-badge.healthy {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .risk-badge.caution {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .risk-badge.critical {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Impact Card */
+        .impact-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .impact-header {
+            background: linear-gradient(135deg, #0A4D68, #0e6b8a);
+            color: white;
+            padding: 1rem 1.5rem;
+        }
+
+        .impact-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .impact-body {
+            padding: 1.5rem;
+        }
+
+        .impact-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .impact-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0A4D68;
+        }
+
+        .metric-value.negative {
+            color: #dc2626;
+        }
+
+        .metric-value.positive {
+            color: #16a34a;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .risk-transition {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .risk-arrow {
+            font-size: 1.5rem;
+            color: #6b7280;
+        }
+
+        /* Explanation Section */
+        .explanation-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .explanation-section h5 {
+            color: #374151;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .explanation-section p {
+            color: #4b5563;
+            line-height: 1.6;
             margin-bottom: 1rem;
         }
 
-        .module-placeholder p {
-            color: #666;
-            line-height: 1.6;
+        .concerns-list,
+        .recommendations-list,
+        .bullets-list {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .concerns-list li {
+            color: #dc2626;
+            margin-bottom: 0.5rem;
+        }
+
+        .recommendations-list li {
+            color: #0A4D68;
+            margin-bottom: 0.5rem;
+        }
+
+        .bullets-list li {
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Scenarios/History List */
+        .history-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .history-section h4 {
+            color: #374151;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background: #f3f4f6;
+        }
+
+        .history-item .date {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        /* Warning Message */
+        .warning-message {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            color: #92400e;
+        }
+
+        .warning-message a {
+            color: #0A4D68;
+            font-weight: 600;
+        }
+
+        /* Shopline Styles */
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #0A4D68;
+        }
+
+        .search-box button {
+            padding: 0.875rem 1.5rem;
+            background: #0A4D68;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-box button:hover {
+            background: #083d54;
+        }
+
+        .business-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .business-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .business-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .business-card h4 {
+            color: #0A4D68;
+            margin-bottom: 0.5rem;
+        }
+
+        .business-card .category {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .business-card .location {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .business-card .description {
+            color: #374151;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .business-card .score {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .score-bar {
+            flex: 1;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #0A4D68);
+            border-radius: 4px;
+        }
+
+        .score-value {
+            font-weight: 600;
+            color: #0A4D68;
+        }
+
+        .highlights-list {
+            margin-top: 0.75rem;
+            padding-left: 1rem;
+        }
+
+        .highlights-list li {
+            color: #16a34a;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .section-header h2 {
+            margin: 0;
+        }
+
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #374151;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #e5e7eb;
+            border-color: #d1d5db;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Analysis Display Card */
+        .analysis-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .analysis-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .analysis-card-header h4 {
+            color: #0A4D68;
+            margin: 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
         }
     </style>
 </head>
@@ -223,54 +777,219 @@
     <div class="container">
         <h1>Harbor</h1>
         <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
-        
+
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab-button active" onclick="showTab('touristpulse')">TouristPulse</button>
-            <button class="tab-button" onclick="showTab('cashflow')">CashFlow Calm</button>
-            <button class="tab-button" onclick="showTab('rentguard')">RentGuard</button>
+            <button class="tab-button active" data-tab="touristpulse">TouristPulse</button>
+            <button class="tab-button" data-tab="cashflow">CashFlow Calm</button>
+            <button class="tab-button" data-tab="rentguard">RentGuard</button>
+            <button class="tab-button" data-tab="shopline">Shopline</button>
         </div>
 
         <!-- TouristPulse Tab -->
         <div id="touristpulse" class="tab-content active">
-            <h2 style="margin-bottom: 1rem;">30-Day Tourism Forecast for Santa Cruz</h2>
-            <div id="loading" class="loading">Loading tourism predictions...</div>
-            <div id="error" class="error" style="display: none;"></div>
-            <div id="outlook" class="outlook-grid" style="display: none;"></div>
+            <div class="section-header">
+                <h2>7-Day Tourism Forecast for Santa Cruz</h2>
+                <button class="refresh-btn" onclick="loadTouristOutlook()" id="refresh-tourist-btn">Refresh</button>
+            </div>
+            <div id="tourist-loading" class="loading">Loading tourism predictions</div>
+            <div id="tourist-error" class="error" style="display: none;"></div>
+            <div id="tourist-outlook" class="outlook-grid" style="display: none;"></div>
         </div>
 
         <!-- CashFlow Calm Tab -->
         <div id="cashflow" class="tab-content">
-            <div class="module-placeholder">
-                <h2>CashFlow Calm</h2>
-                <p>Financial early-warning system with cash runway projections.</p>
-                <p style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
-                    This module is being developed. Upload POS data to analyze your cash flow and get 30/60/90-day runway projections.
-                </p>
+            <h2 style="margin-bottom: 1.5rem;">CashFlow Calm - Financial Early Warning</h2>
+
+            <div class="module-container">
+                <!-- Left: Form -->
+                <div class="form-panel">
+                    <h3>Upload POS Data</h3>
+
+                    <form id="cashflow-form">
+                        <div class="form-group">
+                            <label for="csv-file">POS CSV File</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="csv-file" accept=".csv" required>
+                                <div class="file-input-label" id="file-label">
+                                    <span>Click or drag to upload CSV</span>
+                                </div>
+                            </div>
+                            <small>CSV with date and amount columns</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="business-name">Business Name (Optional)</label>
+                            <input type="text" id="business-name" placeholder="e.g., Cafe Luna">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="monthly-rent">Monthly Rent ($) *</label>
+                                <input type="number" id="monthly-rent" placeholder="e.g., 4500" step="1" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="monthly-payroll">Monthly Payroll ($)</label>
+                                <input type="number" id="monthly-payroll" placeholder="e.g., 8000" step="1" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="other-costs">Other Fixed Costs ($)</label>
+                                <input type="number" id="other-costs" placeholder="e.g., 1500" step="1" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="cash-on-hand">Cash on Hand ($)</label>
+                                <input type="number" id="cash-on-hand" placeholder="e.g., 25000" step="1" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="variable-cost-rate">Variable Cost Rate</label>
+                            <input type="number" id="variable-cost-rate" placeholder="e.g., 0.35" step="0.01" min="0" max="1" value="0">
+                            <small>COGS/fees as fraction of revenue (0-1)</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="analyze-btn">
+                            Analyze Cash Flow
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: Results -->
+                <div class="results-panel">
+                    <h3>Analysis Results</h3>
+
+                    <div id="cashflow-empty" class="results-empty">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <p>Upload your POS data to get cash flow analysis and runway projections.</p>
+                    </div>
+
+                    <div id="cashflow-loading" class="loading" style="display: none;">Analyzing your data</div>
+                    <div id="cashflow-error" class="error" style="display: none;"></div>
+                    <div id="cashflow-results" style="display: none;"></div>
+
+                    <!-- Previous Analyses -->
+                    <div id="cashflow-history" class="history-section" style="display: none;">
+                        <h4>Previous Analyses</h4>
+                        <div id="analyses-list"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- RentGuard Tab -->
         <div id="rentguard" class="tab-content">
-            <div class="module-placeholder">
-                <h2>RentGuard</h2>
-                <p>Rent fairness analysis and leverage calculator.</p>
-                <p style="margin-top: 1rem; font-size: 0.9rem; color: #999;">
-                    This module is being developed. Analyze your rent increases and compare them to neighborhood averages.
-                </p>
+            <h2 style="margin-bottom: 1.5rem;">RentGuard - Rent Impact Simulator</h2>
+
+            <div class="module-container">
+                <!-- Left: Form -->
+                <div class="form-panel">
+                    <h3>Simulate Rent Increase</h3>
+
+                    <div id="rentguard-warning" class="warning-message" style="display: none;">
+                        <strong>No analyses found!</strong>
+                        <p style="margin-top: 0.5rem;">You need to create a CashFlow analysis first before simulating rent impacts.</p>
+                        <p style="margin-top: 0.5rem;"><a href="#" onclick="showTab('cashflow'); return false;">Go to CashFlow Calm</a></p>
+                    </div>
+
+                    <form id="rentguard-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="analysis-select">Select Analysis</label>
+                            <select id="analysis-select" required>
+                                <option value="">Loading analyses...</option>
+                            </select>
+                            <small>Choose a CashFlow analysis to simulate rent changes</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="increase-pct">Rent Increase (%)</label>
+                            <input type="number" id="increase-pct" placeholder="e.g., 15" step="0.1" min="0" max="200">
+                            <small>Enter the percentage your rent will increase</small>
+                        </div>
+
+                        <div class="form-divider">- OR -</div>
+
+                        <div class="form-group">
+                            <label for="new-rent">New Monthly Rent ($)</label>
+                            <input type="number" id="new-rent" placeholder="e.g., 5500" step="1" min="1">
+                            <small>Enter the new absolute rent amount</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="effective-date">Effective Date (Optional)</label>
+                            <input type="date" id="effective-date">
+                            <small>When does the new rent take effect?</small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="simulate-btn">
+                            Simulate Impact
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: Results -->
+                <div class="results-panel">
+                    <h3>Impact Analysis</h3>
+
+                    <div id="rentguard-empty" class="results-empty">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <p>Select an analysis and enter a rent increase to see the impact on your business.</p>
+                    </div>
+
+                    <div id="rentguard-loading" class="loading" style="display: none;">Calculating impact</div>
+                    <div id="rentguard-error" class="error" style="display: none;"></div>
+                    <div id="rentguard-results" style="display: none;"></div>
+
+                    <div id="scenarios-history" class="history-section" style="display: none;">
+                        <h4>Previous Scenarios</h4>
+                        <div id="scenarios-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shopline Tab -->
+        <div id="shopline" class="tab-content">
+            <h2 style="margin-bottom: 1.5rem;">Shopline - Local Business Discovery</h2>
+
+            <div class="search-box">
+                <input type="text" id="shopline-query" placeholder="Search for local businesses (e.g., coffee shops, bookstores)">
+                <button onclick="searchBusinesses()" id="search-btn">Search</button>
+            </div>
+
+            <div id="shopline-loading" class="loading" style="display: none;">Searching local businesses</div>
+            <div id="shopline-error" class="error" style="display: none;"></div>
+
+            <div id="shopline-results" style="display: none;">
+                <h3 style="margin-bottom: 1rem;">Search Results</h3>
+                <div id="search-results" class="business-grid"></div>
+            </div>
+
+            <div id="featured-section" style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Featured Local Businesses</h3>
+                <div id="featured-loading" class="loading">Loading featured businesses</div>
+                <div id="featured-results" class="business-grid" style="display: none;"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // Backend URL
+        // Backend URL - change to localhost:8000 for local development
         const BACKEND_URL = 'https://harborproject-cruzhacks26.onrender.com';
         const LOCATION = 'Santa Cruz';
-        const DAYS = 30;
 
-        // Tab switching
+        // ===== Tab Switching =====
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.addEventListener('click', () => showTab(btn.dataset.tab));
+        });
+
         function showTab(tabName) {
-            // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -278,12 +997,50 @@
                 btn.classList.remove('active');
             });
 
-            // Show selected tab
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Load data when switching to certain tabs
+            if (tabName === 'rentguard') {
+                loadAnalysesForRentGuard();
+            } else if (tabName === 'cashflow') {
+                loadPreviousAnalyses();
+            } else if (tabName === 'shopline') {
+                loadFeaturedBusinesses();
+            }
         }
 
-        // TouristPulse functions
+        // ===== Utility Functions =====
+        function formatCurrency(amount) {
+            if (amount === null || amount === undefined) return 'N/A';
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function formatPercent(value) {
+            if (value === null || value === undefined) return 'N/A';
+            return `${(value * 100).toFixed(1)}%`;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ===== TouristPulse Functions =====
         function getLevelLabel(level) {
             const labels = {
                 'low': 'LOW',
@@ -298,55 +1055,50 @@
             return level === 'very_high' ? 'very_high' : level;
         }
 
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-            });
-        }
-
         async function loadTouristOutlook() {
-            const loadingEl = document.getElementById('loading');
-            const errorEl = document.getElementById('error');
-            const outlookEl = document.getElementById('outlook');
+            const loadingEl = document.getElementById('tourist-loading');
+            const errorEl = document.getElementById('tourist-error');
+            const outlookEl = document.getElementById('tourist-outlook');
+            const refreshBtn = document.getElementById('refresh-tourist-btn');
 
             try {
+                refreshBtn.disabled = true;
                 loadingEl.style.display = 'block';
                 errorEl.style.display = 'none';
                 outlookEl.style.display = 'none';
 
                 const response = await fetch(
-                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=${DAYS}`
+                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=7`
                 );
 
                 if (!response.ok) {
-                    throw new Error(`Backend API error: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
                 }
 
                 const data = await response.json();
-                
+
                 if (!data.outlook || data.outlook.length === 0) {
                     throw new Error('No outlook data received');
                 }
 
-                displayOutlook(data.outlook);
-                
+                displayTouristOutlook(data.outlook);
+
             } catch (err) {
                 console.error('Error loading tourist outlook:', err);
                 errorEl.innerHTML = `
                     <strong>Error:</strong> ${err.message}
-                    <code>Make sure the Python backend is running at ${BACKEND_URL}</code>
+                    <code>Make sure the backend is running at ${BACKEND_URL}</code>
                 `;
                 errorEl.style.display = 'block';
             } finally {
                 loadingEl.style.display = 'none';
+                refreshBtn.disabled = false;
             }
         }
 
-        function displayOutlook(outlook) {
-            const outlookEl = document.getElementById('outlook');
+        function displayTouristOutlook(outlook) {
+            const outlookEl = document.getElementById('tourist-outlook');
             outlookEl.innerHTML = '';
 
             if (outlook.length === 0) {
@@ -364,8 +1116,8 @@
                         <div class="card-drivers">
                             <strong>Drivers:</strong>
                             <ul>
-                                ${day.drivers.map(driver => 
-                                    `<li>${driver.source}: ${driver.factor} (${driver.impact}, weight: ${driver.weight.toFixed(2)})</li>`
+                                ${day.drivers.map(driver =>
+                                    `<li>${driver.source}: ${driver.factor} (${driver.impact})</li>`
                                 ).join('')}
                             </ul>
                         </div>
@@ -390,8 +1142,584 @@
             outlookEl.style.display = 'grid';
         }
 
-        // Load TouristPulse on page load
-        window.addEventListener('DOMContentLoaded', loadTouristOutlook);
+        // ===== CashFlow Functions =====
+        const csvFileInput = document.getElementById('csv-file');
+        const fileLabel = document.getElementById('file-label');
+
+        csvFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileLabel.innerHTML = `<span>${e.target.files[0].name}</span>`;
+                fileLabel.classList.add('has-file');
+            } else {
+                fileLabel.innerHTML = '<span>Click or drag to upload CSV</span>';
+                fileLabel.classList.remove('has-file');
+            }
+        });
+
+        document.getElementById('cashflow-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await analyzeCashFlow();
+        });
+
+        async function analyzeCashFlow() {
+            const emptyEl = document.getElementById('cashflow-empty');
+            const loadingEl = document.getElementById('cashflow-loading');
+            const errorEl = document.getElementById('cashflow-error');
+            const resultsEl = document.getElementById('cashflow-results');
+            const analyzeBtn = document.getElementById('analyze-btn');
+
+            const csvFile = document.getElementById('csv-file').files[0];
+            const rent = document.getElementById('monthly-rent').value;
+            const payroll = document.getElementById('monthly-payroll').value || 0;
+            const other = document.getElementById('other-costs').value || 0;
+            const cashOnHand = document.getElementById('cash-on-hand').value;
+            const variableCostRate = document.getElementById('variable-cost-rate').value || 0;
+            const businessName = document.getElementById('business-name').value;
+
+            if (!csvFile) {
+                errorEl.innerHTML = '<strong>Error:</strong> Please select a CSV file';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                analyzeBtn.disabled = true;
+                analyzeBtn.textContent = 'Analyzing...';
+                emptyEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                resultsEl.style.display = 'none';
+
+                const formData = new FormData();
+                formData.append('csv_file', csvFile);
+                formData.append('rent', rent);
+                formData.append('payroll', payroll);
+                formData.append('other', other);
+                formData.append('variable_cost_rate', variableCostRate);
+                if (cashOnHand) formData.append('cash_on_hand', cashOnHand);
+                if (businessName) formData.append('business_name', businessName);
+
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayCashFlowResults(data);
+                loadPreviousAnalyses();
+
+            } catch (err) {
+                console.error('Error analyzing cash flow:', err);
+                errorEl.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Cash Flow';
+            }
+        }
+
+        function displayCashFlowResults(data) {
+            const resultsEl = document.getElementById('cashflow-results');
+            const metrics = data.metrics;
+            const explanation = data.explanation;
+
+            const runwayText = metrics.runway_days === null || metrics.runway_days > 365
+                ? 'Indefinite'
+                : `${Math.round(metrics.runway_days)} days`;
+
+            resultsEl.innerHTML = `
+                <div class="analysis-card">
+                    <div class="analysis-card-header">
+                        <h4>${data.business_name || 'Analysis'} #${data.analysis_id}</h4>
+                        <span class="risk-badge ${metrics.risk_state}">${metrics.risk_state}</span>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value">${formatCurrency(metrics.avg_daily_revenue)}</div>
+                            <div class="metric-label">Avg Daily Revenue</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${runwayText}</div>
+                            <div class="metric-label">Cash Runway</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value ${metrics.trend_7d >= 0 ? 'positive' : 'negative'}">${(metrics.trend_7d * 100).toFixed(1)}%</div>
+                            <div class="metric-label">7-Day Trend</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${formatPercent(metrics.fixed_cost_burden)}</div>
+                            <div class="metric-label">Fixed Cost Burden</div>
+                        </div>
+                    </div>
+
+                    <div class="explanation-section">
+                        <h5>Key Insights</h5>
+                        <ul class="bullets-list">
+                            ${explanation.bullets.map(b => `<li>${b}</li>`).join('')}
+                        </ul>
+
+                        ${explanation.actions && explanation.actions.length > 0 ? `
+                            <h5 style="margin-top: 1rem;">Recommended Actions</h5>
+                            <ul class="recommendations-list">
+                                ${explanation.actions.map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+
+                        <p style="margin-top: 1rem; font-size: 0.85rem; color: #6b7280;">
+                            <em>${explanation.confidence_note}</em>
+                        </p>
+                    </div>
+                </div>
+            `;
+            resultsEl.style.display = 'block';
+        }
+
+        async function loadPreviousAnalyses() {
+            const historySection = document.getElementById('cashflow-history');
+            const analysesList = document.getElementById('analyses-list');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=5`);
+                if (!response.ok) return;
+
+                const analyses = await response.json();
+
+                if (analyses.length === 0) {
+                    historySection.style.display = 'none';
+                    return;
+                }
+
+                analysesList.innerHTML = analyses.map(a => `
+                    <div class="history-item" onclick="loadAnalysisDetails(${a.id})">
+                        <span>${a.business_name || 'Analysis'} #${a.id}</span>
+                        <span>
+                            <span class="risk-badge ${a.risk_state}">${a.risk_state}</span>
+                            <span class="date">${formatDateTime(a.created_at)}</span>
+                        </span>
+                    </div>
+                `).join('');
+
+                historySection.style.display = 'block';
+            } catch (err) {
+                console.error('Error loading analyses:', err);
+            }
+        }
+
+        async function loadAnalysisDetails(analysisId) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses/${analysisId}`);
+                if (!response.ok) throw new Error('Failed to load analysis');
+
+                const data = await response.json();
+
+                // Convert to display format
+                const displayData = {
+                    analysis_id: data.analysis_id,
+                    business_name: data.business_name,
+                    metrics: data.metrics,
+                    explanation: {
+                        bullets: [
+                            `Analysis based on ${data.data_days} days of data`,
+                            `Fixed costs: Rent ${formatCurrency(data.fixed_costs?.rent)}, Payroll ${formatCurrency(data.fixed_costs?.payroll)}`,
+                            data.fixed_costs?.cash_on_hand ? `Cash reserves: ${formatCurrency(data.fixed_costs.cash_on_hand)}` : 'No cash reserves recorded'
+                        ],
+                        actions: [],
+                        confidence_note: `Confidence: ${(data.metrics.confidence * 100).toFixed(0)}%`
+                    }
+                };
+
+                displayCashFlowResults(displayData);
+            } catch (err) {
+                console.error('Error loading analysis details:', err);
+            }
+        }
+
+        // ===== RentGuard Functions =====
+        async function loadAnalysesForRentGuard() {
+            const warningEl = document.getElementById('rentguard-warning');
+            const formEl = document.getElementById('rentguard-form');
+            const selectEl = document.getElementById('analysis-select');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/cashflow/analyses?limit=20`);
+                if (!response.ok) throw new Error('Failed to load analyses');
+
+                const analyses = await response.json();
+
+                if (analyses.length === 0) {
+                    warningEl.style.display = 'block';
+                    formEl.style.display = 'none';
+                    return;
+                }
+
+                warningEl.style.display = 'none';
+                formEl.style.display = 'block';
+
+                selectEl.innerHTML = analyses.map(a =>
+                    `<option value="${a.id}">${a.business_name || 'Analysis'} #${a.id} (${a.risk_state})</option>`
+                ).join('');
+
+                // Load scenarios for first analysis
+                loadScenarios(analyses[0].id);
+
+            } catch (err) {
+                console.error('Error loading analyses for RentGuard:', err);
+                warningEl.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                warningEl.style.display = 'block';
+                formEl.style.display = 'none';
+            }
+        }
+
+        document.getElementById('analysis-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadScenarios(e.target.value);
+            }
+        });
+
+        document.getElementById('rentguard-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await simulateRentImpact();
+        });
+
+        async function simulateRentImpact() {
+            const emptyEl = document.getElementById('rentguard-empty');
+            const loadingEl = document.getElementById('rentguard-loading');
+            const errorEl = document.getElementById('rentguard-error');
+            const resultsEl = document.getElementById('rentguard-results');
+            const simulateBtn = document.getElementById('simulate-btn');
+
+            const analysisId = document.getElementById('analysis-select').value;
+            const increasePct = document.getElementById('increase-pct').value;
+            const newRent = document.getElementById('new-rent').value;
+            const effectiveDate = document.getElementById('effective-date').value;
+
+            if (!increasePct && !newRent) {
+                errorEl.innerHTML = '<strong>Error:</strong> Please enter either a percentage increase or a new rent amount';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                simulateBtn.disabled = true;
+                simulateBtn.textContent = 'Simulating...';
+                emptyEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                resultsEl.style.display = 'none';
+
+                const payload = {
+                    analysis_id: parseInt(analysisId)
+                };
+                if (increasePct) payload.increase_pct = parseFloat(increasePct);
+                if (newRent) payload.new_rent = parseFloat(newRent);
+                if (effectiveDate) payload.effective_date = effectiveDate;
+
+                const response = await fetch(`${BACKEND_URL}/rentguard/impact`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayRentImpactResults(data);
+                loadScenarios(analysisId);
+
+            } catch (err) {
+                console.error('Error simulating rent impact:', err);
+                errorEl.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+                simulateBtn.disabled = false;
+                simulateBtn.textContent = 'Simulate Impact';
+            }
+        }
+
+        function displayRentImpactResults(data) {
+            const resultsEl = document.getElementById('rentguard-results');
+            const metrics = data.metrics;
+            const explanation = data.explanation;
+
+            const deltaClass = metrics.delta_monthly > 0 ? 'negative' : 'positive';
+            const runwayImpactText = metrics.runway_impact_days === null
+                ? 'N/A'
+                : (metrics.runway_impact_days > 0 ? '+' : '') + Math.round(metrics.runway_impact_days) + ' days';
+
+            resultsEl.innerHTML = `
+                <div class="impact-card">
+                    <div class="impact-header">
+                        <h4>Rent Impact Analysis</h4>
+                    </div>
+                    <div class="impact-body">
+                        <div class="impact-metrics">
+                            <div class="metric-item">
+                                <div class="metric-value">${formatCurrency(metrics.current_rent)}</div>
+                                <div class="metric-label">Current Rent</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">${formatCurrency(metrics.new_rent)}</div>
+                                <div class="metric-label">New Rent</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value ${deltaClass}">${metrics.delta_monthly > 0 ? '+' : ''}${formatCurrency(metrics.delta_monthly)}</div>
+                                <div class="metric-label">Monthly Change</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value ${deltaClass}">${metrics.delta_pct > 0 ? '+' : ''}${metrics.delta_pct.toFixed(1)}%</div>
+                                <div class="metric-label">Percentage Change</div>
+                            </div>
+                        </div>
+
+                        <div class="risk-transition">
+                            <span class="risk-badge ${metrics.current_risk_state}">${metrics.current_risk_state}</span>
+                            <span class="risk-arrow">→</span>
+                            <span class="risk-badge ${metrics.new_risk_state}">${metrics.new_risk_state}</span>
+                        </div>
+
+                        <div class="impact-metrics">
+                            <div class="metric-item">
+                                <div class="metric-value ${metrics.runway_impact_days < 0 ? 'negative' : ''}">${runwayImpactText}</div>
+                                <div class="metric-label">Runway Impact</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-value">${metrics.new_fixed_cost_burden ? formatPercent(metrics.new_fixed_cost_burden) : 'N/A'}</div>
+                                <div class="metric-label">New Cost Burden</div>
+                            </div>
+                        </div>
+
+                        <div class="explanation-section">
+                            <h5>Summary</h5>
+                            <p>${explanation.summary}</p>
+
+                            ${explanation.key_drivers && explanation.key_drivers.length > 0 ? `
+                                <h5>Key Concerns</h5>
+                                <ul class="concerns-list">
+                                    ${explanation.key_drivers.map(d => `<li>${d}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+
+                            ${explanation.recommended_actions && explanation.recommended_actions.length > 0 ? `
+                                <h5>Recommended Actions</h5>
+                                <ul class="recommendations-list">
+                                    ${explanation.recommended_actions.map(a => `<li>${a}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            resultsEl.style.display = 'block';
+        }
+
+        async function loadScenarios(analysisId) {
+            const historySection = document.getElementById('scenarios-history');
+            const scenariosList = document.getElementById('scenarios-list');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/rentguard/scenarios/${analysisId}`);
+                if (!response.ok) return;
+
+                const scenarios = await response.json();
+
+                if (scenarios.length === 0) {
+                    historySection.style.display = 'none';
+                    return;
+                }
+
+                scenariosList.innerHTML = scenarios.map(s => `
+                    <div class="history-item">
+                        <span>${s.increase_pct ? `+${s.increase_pct.toFixed(1)}%` : formatCurrency(s.new_rent)}</span>
+                        <span>
+                            <span class="risk-badge ${s.new_risk_state}">${s.new_risk_state}</span>
+                            <span class="date">${formatDateTime(s.created_at)}</span>
+                        </span>
+                    </div>
+                `).join('');
+
+                historySection.style.display = 'block';
+            } catch (err) {
+                console.error('Error loading scenarios:', err);
+            }
+        }
+
+        // ===== Shopline Functions =====
+        document.getElementById('shopline-query').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchBusinesses();
+        });
+
+        async function searchBusinesses() {
+            const query = document.getElementById('shopline-query').value.trim();
+            if (!query) return;
+
+            const loadingEl = document.getElementById('shopline-loading');
+            const errorEl = document.getElementById('shopline-error');
+            const resultsSection = document.getElementById('shopline-results');
+            const resultsEl = document.getElementById('search-results');
+            const searchBtn = document.getElementById('search-btn');
+
+            try {
+                searchBtn.disabled = true;
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                resultsSection.style.display = 'none';
+
+                const response = await fetch(`${BACKEND_URL}/shopline/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: query,
+                        location: LOCATION
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displaySearchResults(data.results);
+
+            } catch (err) {
+                console.error('Error searching businesses:', err);
+                errorEl.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+                searchBtn.disabled = false;
+            }
+        }
+
+        function displaySearchResults(results) {
+            const resultsSection = document.getElementById('shopline-results');
+            const resultsEl = document.getElementById('search-results');
+
+            if (results.length === 0) {
+                resultsEl.innerHTML = '<div class="empty-state">No businesses found matching your search.</div>';
+            } else {
+                resultsEl.innerHTML = results.map(b => `
+                    <div class="business-card">
+                        <h4>${b.name}</h4>
+                        <span class="category">${b.category}</span>
+                        <div class="location">${b.location}</div>
+                        ${b.description ? `<div class="description">${b.description}</div>` : ''}
+                    </div>
+                `).join('');
+            }
+
+            resultsSection.style.display = 'block';
+        }
+
+        async function loadFeaturedBusinesses() {
+            const loadingEl = document.getElementById('featured-loading');
+            const resultsEl = document.getElementById('featured-results');
+
+            // Check if already loaded
+            if (resultsEl.innerHTML.trim()) {
+                loadingEl.style.display = 'none';
+                resultsEl.style.display = 'grid';
+                return;
+            }
+
+            try {
+                loadingEl.style.display = 'block';
+                resultsEl.style.display = 'none';
+
+                // First search for some businesses
+                const searchResponse = await fetch(`${BACKEND_URL}/shopline/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: 'local shops restaurants',
+                        location: LOCATION
+                    })
+                });
+
+                if (!searchResponse.ok) throw new Error('Failed to search businesses');
+
+                const searchData = await searchResponse.json();
+
+                if (searchData.results.length === 0) {
+                    resultsEl.innerHTML = '<div class="empty-state">No featured businesses available.</div>';
+                    resultsEl.style.display = 'block';
+                    loadingEl.style.display = 'none';
+                    return;
+                }
+
+                // Get featured rankings
+                const featuredResponse = await fetch(`${BACKEND_URL}/shopline/featured`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        businesses: searchData.results.slice(0, 6),
+                        ranking_factors: {
+                            local: 0.4,
+                            sustainable: 0.3,
+                            community: 0.3
+                        }
+                    })
+                });
+
+                if (!featuredResponse.ok) throw new Error('Failed to get featured businesses');
+
+                const featuredData = await featuredResponse.json();
+                displayFeaturedBusinesses(featuredData.featured);
+
+            } catch (err) {
+                console.error('Error loading featured businesses:', err);
+                resultsEl.innerHTML = `<div class="error"><strong>Error:</strong> ${err.message}</div>`;
+                resultsEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        function displayFeaturedBusinesses(businesses) {
+            const resultsEl = document.getElementById('featured-results');
+
+            if (businesses.length === 0) {
+                resultsEl.innerHTML = '<div class="empty-state">No featured businesses available.</div>';
+            } else {
+                resultsEl.innerHTML = businesses.map(b => `
+                    <div class="business-card">
+                        <h4>${b.name}</h4>
+                        <span class="category">${b.category}</span>
+                        <div class="location">${b.location}</div>
+                        ${b.blurb ? `<div class="description">${b.blurb}</div>` : ''}
+                        ${b.highlights && b.highlights.length > 0 ? `
+                            <ul class="highlights-list">
+                                ${b.highlights.map(h => `<li>${h}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                        <div class="score">
+                            <div class="score-bar">
+                                <div class="score-fill" style="width: ${b.score}%"></div>
+                            </div>
+                            <span class="score-value">${b.score}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            resultsEl.style.display = 'grid';
+        }
+
+        // ===== Initialize =====
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTouristOutlook();
+        });
     </script>
 </body>
 </html>
