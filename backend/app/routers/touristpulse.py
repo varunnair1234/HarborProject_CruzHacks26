@@ -7,7 +7,7 @@ import httpx
 import json
 import csv
 import os
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from app.db.session import get_db
 from app.schemas.touristpulse import (
@@ -38,10 +38,18 @@ def clamp_days(days: int) -> int:
     return max(1, min(int(days), NWS_MAX_DAYS))
 
 
+def _nws_user_agent() -> str:
+    # NWS requires a User-Agent. If you add `nws_user_agent` to settings later, we’ll use it.
+    ua = getattr(settings, "nws_user_agent", None)
+    if ua and isinstance(ua, str) and ua.strip():
+        return ua.strip()
+    return "HarborProject_CruzHacks26 (contact: none)"
+
+
 async def nws_get_json(url: str) -> dict:
     """Fetch JSON from NWS API with required headers."""
     headers = {
-        "User-Agent": settings.nws_user_agent if hasattr(settings, "nws_user_agent") else "HarborProject (contact: none)",
+        "User-Agent": _nws_user_agent(),
         "Accept": "application/geo+json",
     }
     async with httpx.AsyncClient(timeout=15.0) as client:
@@ -53,12 +61,10 @@ async def nws_get_json(url: str) -> dict:
 async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
     """Fetch weather data from NWS API (2-step: points -> forecast)."""
     try:
-        # Step 1: Points endpoint -> get forecast URL for this lat/lon
         points = await nws_get_json(f"{NWS_BASE}/points/{lat},{lon}")
         forecast_url = points["properties"]["forecast"]
         logger.info("NWS points resolved to forecast URL: %s", forecast_url)
 
-        # Step 2: Forecast endpoint -> get periods
         forecast = await nws_get_json(forecast_url)
         logger.info("Successfully fetched NWS forecast data")
         return forecast
@@ -81,39 +87,36 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
     """Convert NWS forecast periods into daily summaries."""
     grouped = defaultdict(list)
     for p in periods:
-        # Parse ISO datetime, handling both Z and offset formats
-        start_time = p["startTime"]
-        if start_time.endswith("Z"):
-            dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
-        else:
-            dt = datetime.fromisoformat(start_time)
-        d = dt.date()
-        grouped[d].append(p)
+        start_time = p.get("startTime")
+        if not start_time:
+            continue
 
-    daily = []
+        try:
+            if start_time.endswith("Z"):
+                dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+            else:
+                dt = datetime.fromisoformat(start_time)
+        except Exception:
+            continue
+
+        grouped[dt.date()].append(p)
+
+    daily: List[dict] = []
     for d in sorted(grouped.keys())[:days]:
         ps = grouped[d]
 
-        # Extract temperatures
-        temps = [p["temperature"] for p in ps if isinstance(p.get("temperature"), (int, float))]
+        temps = [p.get("temperature") for p in ps if isinstance(p.get("temperature"), (int, float))]
         max_temp = max(temps) if temps else None
         min_temp = min(temps) if temps else None
 
-        # Extract precipitation probabilities
-        pops = []
+        pops: List[float] = []
         for p in ps:
             pop = (p.get("probabilityOfPrecipitation") or {}).get("value")
             if isinstance(pop, (int, float)):
-                pops.append(pop)
-        max_pop = max(pops) if pops else 0
+                pops.append(float(pop))
+        max_pop = max(pops) if pops else 0.0
 
-        # Pick a representative condition: prefer a daytime period if present
-        rep = None
-        for p in ps:
-            if p.get("isDaytime") is True:
-                rep = p
-                break
-        rep = rep or ps[0]
+        rep = next((p for p in ps if p.get("isDaytime") is True), None) or ps[0]
         condition = rep.get("shortForecast") or rep.get("detailedForecast") or "Unknown"
 
         daily.append(
@@ -129,7 +132,7 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
     return daily
 
 
-async def fetch_traffic_data() -> Dict:
+async def fetch_traffic_data() -> Dict[str, Any]:
     """Fetch traffic data from TomTom API (optional). Falls back to mock."""
     try:
         tomtom_key = os.getenv("TOMTOM_API_KEY")
@@ -165,9 +168,9 @@ async def fetch_traffic_data() -> Dict:
         return {"flow": {"congestionLevel": 0.3}, "incidents": []}
 
 
-def load_events() -> List[Dict]:
+def load_events() -> List[Dict[str, Any]]:
     """Load events from CSV file if present; otherwise return empty."""
-    events: List[Dict] = []
+    events: List[Dict[str, Any]] = []
 
     current_file = os.path.abspath(__file__)
     backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # backend/
@@ -179,19 +182,9 @@ def load_events() -> List[Dict]:
         "santa_cruz_events_combined.csv",
     ]
 
-    logger.info("Attempting to load events CSV")
-    logger.info("Current file: %s", current_file)
-    logger.info("Backend dir: %s", backend_dir)
-    logger.info("CWD: %s", os.getcwd())
-
     for path in possible_paths:
-        abs_path = os.path.abspath(path)
-        exists = os.path.exists(path)
-        logger.info("Trying path: %s (exists: %s)", abs_path, exists)
-
-        if not exists:
+        if not os.path.exists(path):
             continue
-
         try:
             with open(path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -205,16 +198,75 @@ def load_events() -> List[Dict]:
                                 "type": row.get("type", "community"),
                             }
                         )
-            logger.info("✅ Loaded %s events from %s", len(events), abs_path)
+            logger.info("✅ Loaded %s events from %s", len(events), os.path.abspath(path))
             return events
         except Exception as e:
-            logger.error("Failed to load events from %s: %s", abs_path, e, exc_info=True)
+            logger.error("Failed to load events from %s: %s", os.path.abspath(path), e, exc_info=True)
 
     logger.warning("⚠️ No events CSV file found. Predictions will work without event data.")
     return events
 
 
-async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, events: List[Dict]) -> Dict:
+def _build_llm_input(date_str: str, location: str, weather: Dict[str, Any], traffic: Dict[str, Any], events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    congestion = traffic.get("flow", {}).get("congestionLevel", None)
+    return {
+        "date": date_str,
+        "location": location,
+        "weather": {
+            "condition": weather.get("condition"),
+            "temp_max_f": weather.get("temp_max"),
+            "temp_min_f": weather.get("temp_min"),
+            "precip_prob_pct": weather.get("precipitation_probability"),
+        },
+        "traffic": {
+            "congestion_level": congestion,
+            "incidents_count": len(traffic.get("incidents", [])),
+        },
+        "events": [{"name": e.get("name"), "type": e.get("type"), "location": e.get("location")} for e in events],
+        "notes": [
+            "If surf conditions are not provided, do not invent them. You may only mention surf as a conditional driver (e.g., 'if swell is good')."
+        ],
+    }
+
+
+def _normalize_llm_output(prediction: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize output so the rest of the pipeline can continue to use:
+    { level, factor, reasoning, confidence }
+    Accepts BOTH the old schema and your new schema.
+    """
+    if not isinstance(prediction, dict):
+        return {"level": "normal", "factor": 1.0, "reasoning": "Unable to generate prediction", "confidence": 0.5}
+
+    # New schema -> old schema
+    if "demand_level" in prediction:
+        dl = (prediction.get("demand_level") or "moderate").strip().lower()
+        level = {"low": "low", "moderate": "normal", "high": "high"}.get(dl, "normal")
+        reasoning = prediction.get("summary") or "Unable to generate prediction"
+        confidence = prediction.get("confidence", 0.6)
+        # factor optional; keep it consistent for callers that still display it later
+        factor = {"low": 0.85, "normal": 1.0, "high": 1.25}.get(level, 1.0)
+        return {
+            "level": level,
+            "factor": factor,
+            "reasoning": reasoning,
+            "confidence": float(confidence) if isinstance(confidence, (int, float)) else 0.6,
+        }
+
+    # Old schema pass-through
+    if "level" in prediction and "reasoning" in prediction:
+        conf = prediction.get("confidence", 0.6)
+        return {
+            "level": prediction.get("level", "normal"),
+            "factor": prediction.get("factor", 1.0),
+            "reasoning": prediction.get("reasoning", "Unable to generate prediction"),
+            "confidence": float(conf) if isinstance(conf, (int, float)) else 0.6,
+        }
+
+    return {"level": "normal", "factor": 1.0, "reasoning": "Unable to generate prediction", "confidence": 0.5}
+
+
+async def call_llm_for_prediction(date_str: str, location: str, weather: Dict[str, Any], traffic: Dict[str, Any], events: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Call DeepSeek via OpenRouter for tourism prediction; fallback if no key."""
     try:
         openrouter_key = settings.openrouter_api_key
@@ -229,36 +281,70 @@ async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, e
             if events:
                 level, factor = "high", max(factor, 1.5)
 
-            return {
-                "level": level,
-                "factor": factor,
-                "reasoning": "Prediction based on weather and events (LLM unavailable)",
-                "confidence": 0.6,
-            }
+            return {"level": level, "factor": factor, "reasoning": "Prediction based on weather and events (LLM unavailable)", "confidence": 0.6}
 
-        events_text = "\n".join([f"- {e['name']} ({e.get('type','event')})" for e in events]) if events else "No major events scheduled"
+        input_payload = _build_llm_input(date_str, location, weather, traffic, events)
+        input_json = json.dumps(input_payload, ensure_ascii=False)
 
-        prompt = f"""You are a tourism prediction expert for Santa Cruz, California. Predict the tourism level for {date_str}.
+        prompt = f"""<TouristPulseRole>
+You are TouristPulse’s demand synthesis engine for Santa Cruz, California.
+Your job is to interpret already-collected public signals (weather, events, calendar context) and explain expected visitor activity in a clear, grounded, and practical way.
+</TouristPulseRole>
 
-WEATHER:
-- Condition: {weather['condition']}
-- Temperature: {weather['temp_min']}°F - {weather['temp_max']}°F
-- Precipitation Probability: {weather['precipitation_probability']}%
+<HardRules>
+- Do NOT perform calculations.
+- Do NOT invent events, weather, surf conditions, or statistics.
+- Do NOT reference private or personal data.
+- Do NOT make guarantees or predictions of exact visitor counts.
+- Do NOT use promotional or marketing language.
+- If signals conflict or confidence is limited, state uncertainty explicitly.
+</HardRules>
 
-TRAFFIC:
-- Congestion Level: {traffic.get('flow', {}).get('congestionLevel', 0) * 100 if traffic.get('flow', {}).get('congestionLevel') is not None else 0:.0f}%
-- Traffic Incidents: {len(traffic.get('incidents', []))}
+<AudienceAndTone>
+Audience: small business owners and local operators.
+Tone: factual, calm, and locally aware.
+Style requirements:
+- Plain language, no jargon.
+- Short sentences.
+- Bulleted explanations where appropriate.
+- Focus on “why” rather than “what to do.”
+</AudienceAndTone>
 
-EVENTS:
-{events_text}
+<Task>
+Given the structured input signals below, produce a concise visitor demand outlook for the date provided.
 
-Return ONLY valid JSON in exactly this schema:
+You must:
+1) Classify overall visitor activity as exactly one of: ["low", "moderate", "high"]
+2) Explain the classification using coastal Santa Cruz logic, including surf-driven tourism ONLY if the input supports it.
+3) Identify which factors are driving demand up or down.
+4) Note any uncertainty or conflicting signals honestly.
+</Task>
+
+<OutputFormat>
+Return ONLY valid JSON. No markdown. No extra text.
+
+Use this exact schema:
+
 {{
-  "level": "low" | "normal" | "high" | "very high",
-  "factor": <number 0.5 to 2.0>,
-  "reasoning": "<brief 1-2 sentence explanation>",
-  "confidence": <number 0 to 1>
-}}"""
+  "demand_level": "low" | "moderate" | "high",
+  "summary": string,
+  "drivers": [string, ...],
+  "suppressors": [string, ...],
+  "confidence": number,
+  "limitations": string
+}}
+
+Additional constraints:
+- drivers: 2 to 4 items
+- suppressors: 0 to 3 items
+- Each list item must be one sentence.
+- confidence must be between 0.0 and 1.0 and reflect signal alignment.
+</OutputFormat>
+
+<InputSignals>
+{input_json}
+</InputSignals>
+"""
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -270,14 +356,11 @@ Return ONLY valid JSON in exactly this schema:
                 json={
                     "model": "deepseek/deepseek-chat",
                     "messages": [
-                        {
-                            "role": "system",
-                            "content": "Return ONLY valid JSON. No markdown. No extra text.",
-                        },
+                        {"role": "system", "content": "Return ONLY valid JSON. No markdown. No extra text."},
                         {"role": "user", "content": prompt},
                     ],
                     "temperature": 0.3,
-                    "max_tokens": 220,
+                    "max_tokens": 260,
                 },
             )
             response.raise_for_status()
@@ -285,14 +368,16 @@ Return ONLY valid JSON in exactly this schema:
         result = response.json()
         content = result["choices"][0]["message"]["content"].strip()
 
-        # Robust JSON parse (handle occasional code fences)
         try:
-            return json.loads(content)
+            raw = json.loads(content)
         except Exception:
+            # Handle occasional fences
             if "```" in content:
                 content = content.split("```", 1)[1]
                 content = content.split("```", 1)[0].strip()
-            return json.loads(content)
+            raw = json.loads(content)
+
+        return _normalize_llm_output(raw)
 
     except Exception as e:
         logger.error("LLM prediction failed: %s", e, exc_info=True)
@@ -317,12 +402,10 @@ async def get_tourist_outlook(
     logger.info("Tourist outlook requested for %s, requested=%s days (clamped=%s)", location, requested_days, days)
 
     try:
-        # Fetch data from NWS API
         forecast = await fetch_weather_data_nws(SANTA_CRUZ_LAT, SANTA_CRUZ_LON)
         traffic_data = await fetch_traffic_data()
         events = load_events()
 
-        # Convert NWS periods to daily format
         periods = forecast["properties"]["periods"]
         daily_forecast = nws_periods_to_daily(periods, days)
 
@@ -334,12 +417,12 @@ async def get_tourist_outlook(
         for item in daily_forecast:
             current_date = item["date"]
             date_str = current_date.isoformat()
-
             day_events = [e for e in events if e.get("date") == date_str]
 
             weather_condition = item["condition"]
             prediction = await call_llm_for_prediction(
                 date_str,
+                location,
                 {
                     "condition": weather_condition,
                     "temp_max": item["temp_max"],
@@ -350,37 +433,23 @@ async def get_tourist_outlook(
                 day_events,
             )
 
-            level_map = {"low": "low", "normal": "moderate", "high": "high", "very high": "very_high"}
+            level_map = {"low": "low", "normal": "moderate", "high": "high", "very_high": "very_high"}
             demand_level = level_map.get(prediction.get("level", "normal"), "moderate")
 
             signals = [
                 DemandSignal(
                     source="weather",
-                    factor=weather_condition.lower(),
-                    impact="positive" if ("clear" in weather_condition.lower() or "sunny" in weather_condition.lower()) else "negative",
+                    factor=(weather_condition or "").lower(),
+                    impact="positive" if ("clear" in (weather_condition or "").lower() or "sunny" in (weather_condition or "").lower()) else "negative",
                     weight=0.4,
                 )
             ]
 
             if day_events:
-                signals.append(
-                    DemandSignal(
-                        source="events",
-                        factor=f"{len(day_events)} event(s)",
-                        impact="positive",
-                        weight=0.3,
-                    )
-                )
+                signals.append(DemandSignal(source="events", factor=f"{len(day_events)} event(s)", impact="positive", weight=0.3))
 
             if traffic_data.get("flow", {}).get("congestionLevel") is not None:
-                signals.append(
-                    DemandSignal(
-                        source="traffic",
-                        factor="congestion",
-                        impact="positive",
-                        weight=0.3,
-                    )
-                )
+                signals.append(DemandSignal(source="traffic", factor="congestion", impact="positive", weight=0.3))
 
             outlook.append(
                 TouristPulseOutlook(
@@ -392,11 +461,7 @@ async def get_tourist_outlook(
                 )
             )
 
-        return TouristPulseResponse(
-            location=location,
-            outlook=outlook,
-            generated_at=datetime.utcnow().isoformat(),
-        )
+        return TouristPulseResponse(location=location, outlook=outlook, generated_at=datetime.utcnow().isoformat())
 
     except HTTPException:
         raise

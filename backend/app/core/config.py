@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     # NWS Weather API
     nws_user_agent: str = "HarborProject_CruzHacks26 (contact: youremail@example.com)"
+    nws_user_agent: str = "harborproject.app, your_email@domain.com"
 
     model_config = SettingsConfigDict(
         env_file=".env",
