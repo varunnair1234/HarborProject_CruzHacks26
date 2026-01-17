@@ -470,19 +470,36 @@ async def get_tourist_outlook(
 
         outlook: List[TouristPulseOutlook] = []
 
+        # Debug: log all loaded events and their dates
+        logger.info("Total events loaded: %d", len(events))
+        event_dates_summary = {}
+        for e in events:
+            event_date = e.get("date", "").strip()
+            if event_date:
+                if event_date not in event_dates_summary:
+                    event_dates_summary[event_date] = []
+                event_dates_summary[event_date].append(e.get("name", "Unknown"))
+        logger.info("Events by date: %s", {k: len(v) for k, v in event_dates_summary.items()})
+        
         for item in daily_forecast:
             current_date = item["date"]
             date_str = current_date.isoformat()
             # Filter events for this date (strip whitespace for comparison)
             day_events = [e for e in events if e.get("date", "").strip() == date_str]
-            logger.info("Date %s: Found %d events", date_str, len(day_events))
+            logger.info("Date %s (type: %s): Found %d events", date_str, type(current_date).__name__, len(day_events))
             if day_events:
                 logger.info("  Events for %s: %s", date_str, [e.get("name") for e in day_events])
-            # Debug: check if any events have dates that are close but not exact matches
-            all_event_dates = [e.get("date", "").strip() for e in events]
-            nearby_dates = [d for d in all_event_dates if d and abs((datetime.fromisoformat(d).date() - current_date).days) <= 1]
-            if nearby_dates and date_str not in nearby_dates:
-                logger.warning("  Nearby event dates found: %s (looking for %s)", set(nearby_dates), date_str)
+            else:
+                # Check if there are events with similar dates (off by one day)
+                for event_date, event_names in event_dates_summary.items():
+                    try:
+                        event_date_obj = datetime.fromisoformat(event_date).date()
+                        days_diff = abs((event_date_obj - current_date).days)
+                        if days_diff == 1:
+                            logger.warning("  Date %s has no events, but %s has %d events (off by %d day)", 
+                                         date_str, event_date, len(event_names), days_diff)
+                    except:
+                        pass
 
             weather_condition = item["condition"]
             prediction = await call_llm_for_prediction(
