@@ -1533,11 +1533,20 @@
 
         // Handle login
         async function handleLogin(event) {
-            event.preventDefault();
+            if (event) {
+                event.preventDefault();
+            }
+            console.log('handleLogin called');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const errorEl = document.getElementById('auth-error');
             const successEl = document.getElementById('auth-success');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter both email and password';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             // Clear previous messages
             errorEl.style.display = 'none';
