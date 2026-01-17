@@ -134,16 +134,16 @@ def get_weather_condition(weathercode: int) -> str:
 
 
 async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, events: List[Dict]) -> Dict:
-    """Call DeepSeek directly for tourism prediction"""
+    """Call DeepSeek via OpenRouter for tourism prediction"""
     try:
-        # Get DeepSeek API key from environment
-        deepseek_key = os.getenv("DEEPSEEK_API_KEY")
-        if not deepseek_key:
-            logger.warning("DeepSeek API key not found, using fallback prediction")
+        # Use OpenRouter API key (same as other modules)
+        openrouter_key = settings.openrouter_api_key
+        if not openrouter_key:
+            logger.warning("OpenRouter API key not found, using fallback prediction")
             return {
                 "level": "normal",
                 "factor": 1.0,
-                "reasoning": "DeepSeek API key not configured",
+                "reasoning": "OpenRouter API key not configured",
                 "confidence": 0.5
             }
         
@@ -181,13 +181,13 @@ Respond with ONLY a JSON object in this exact format:
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
+                "https://openrouter.ai/api/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {deepseek_key}",
+                    "Authorization": f"Bearer {openrouter_key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "deepseek-chat",
+                    "model": "deepseek/deepseek-chat",
                     "messages": [
                         {
                             "role": "system",
@@ -219,7 +219,7 @@ Respond with ONLY a JSON object in this exact format:
                 
                 return json.loads(content)
     except Exception as e:
-        logger.error(f"DeepSeek LLM prediction failed: {e}")
+        logger.error(f"LLM prediction failed: {e}")
         # Fallback prediction
         return {
             "level": "normal",
