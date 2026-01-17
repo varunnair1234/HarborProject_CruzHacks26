@@ -119,7 +119,7 @@ async def analyze_rent_impact(
 
         if cached_explanation:
             explanation_dict = cached_explanation
-             # Some caches return serialized JSON strings — normalize to dict
+            # Some caches return serialized JSON strings — normalize to dict
             if isinstance(explanation_dict, str):
                 try:
                     explanation_dict = json.loads(explanation_dict)
@@ -134,29 +134,33 @@ async def analyze_rent_impact(
                 CacheService.set_llm_output(db, cache_key, "deepseek-v3", explanation_dict)
             except Exception as llm_err:
                 logger.warning(f"LLM explanation failed, using deterministic fallback: {llm_err}")
-                # Deterministic fallback explanation (keeps endpoint reliable)
-                old_rent = impact_metrics.get("current_rent") or impact_metrics.get("old_rent")
-                new_rent = impact_metrics.get("new_rent")
-                delta_monthly = impact_metrics.get("delta_monthly")
-                new_risk_state = impact_metrics.get("new_risk_state")
-                runway_impact_days = impact_metrics.get("runway_impact_days")
+                explanation_dict = None
 
-                runway_line = ""
-                if isinstance(runway_impact_days, (int, float)):
-                    runway_line = f" This changes your runway by {runway_impact_days:+.0f} days."
+        # If LLM failed or didn't provide data, use deterministic fallback
+        if not explanation_dict or not isinstance(explanation_dict, dict):
+            # Deterministic fallback explanation (keeps endpoint reliable)
+            old_rent = impact_metrics.get("current_rent") or impact_metrics.get("old_rent")
+            new_rent = impact_metrics.get("new_rent")
+            delta_monthly = impact_metrics.get("delta_monthly")
+            new_risk_state = impact_metrics.get("new_risk_state")
+            runway_impact_days = impact_metrics.get("runway_impact_days")
 
-                explanation_dict = {
-                    "summary": f"Rent change from ${old_rent:,.0f} to ${new_rent:,.0f} increases fixed costs by ${delta_monthly:,.0f}/mo and moves risk state to '{new_risk_state}'.{runway_line}",
-                    "key_drivers": [
-                        f"Monthly rent delta: ${delta_monthly:,.0f}",
-                        f"New risk state: {new_risk_state}",
-                    ],
-                    "recommended_actions": [
-                        "Review lease terms and effective date.",
-                        "Consider negotiating the increase if it exceeds comparable market norms.",
-                        "If runway decreases materially, reduce other fixed costs or increase near-term revenue.",
-                    ],
-                }
+            runway_line = ""
+            if isinstance(runway_impact_days, (int, float)):
+                runway_line = f" This changes your runway by {runway_impact_days:+.0f} days."
+
+            explanation_dict = {
+                "summary": f"Rent change from ${old_rent:,.0f} to ${new_rent:,.0f} increases fixed costs by ${delta_monthly:,.0f}/mo and moves risk state to '{new_risk_state}'.{runway_line}",
+                "key_drivers": [
+                    f"Monthly rent delta: ${delta_monthly:,.0f}",
+                    f"New risk state: {new_risk_state}",
+                ],
+                "recommended_actions": [
+                    "Review lease terms and effective date.",
+                    "Consider negotiating the increase if it exceeds comparable market norms.",
+                    "If runway decreases materially, reduce other fixed costs or increase near-term revenue.",
+                ],
+            }
 
         # Normalize LLM response: map 'concerns' -> 'key_drivers', 'recommendations' -> 'recommended_actions'
         if "concerns" in explanation_dict and "key_drivers" not in explanation_dict:
@@ -169,8 +173,10 @@ async def analyze_rent_impact(
             explanation_dict["key_drivers"] = ["Rent increase impact on fixed costs"]
         if "recommended_actions" not in explanation_dict:
             explanation_dict["recommended_actions"] = ["Review your budget and negotiate if possible"]
-        
-        # RentEngine may return additional fields over time; filter to schema-supported keys
+        if "summary" not in explanation_dict:
+            explanation_dict["summary"] = "Rent increase impact analysis completed."
+
+                # RentEngine may return additional fields over time; filter to schema-supported keys
         try:
             allowed_metric_keys = set(RentImpactMetrics.model_fields.keys())  # Pydantic v2
         except AttributeError:
