@@ -87,9 +87,11 @@ async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
 
 def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
     """Convert NWS forecast periods into daily summaries."""
-    from datetime import date
+    from datetime import date, timedelta
     
     today = date.today()
+    logger.info("Filtering forecast: today is %s, requesting %d days", today, days)
+    
     grouped = defaultdict(list)
     for p in periods:
         start_time = p.get("startTime")
@@ -108,10 +110,13 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
         # Only include dates from today onwards (filter out past dates)
         if period_date >= today:
             grouped[period_date].append(p)
+        else:
+            logger.debug("Filtered out past date: %s (today is %s)", period_date, today)
 
     daily: List[dict] = []
-    # Sort dates and take only future dates, limit to requested days
+    # Sort dates and take only future dates starting from today, limit to requested days
     sorted_dates = sorted([d for d in grouped.keys() if d >= today])[:days]
+    logger.info("After filtering: %d dates from %s to %s", len(sorted_dates), sorted_dates[0] if sorted_dates else "none", sorted_dates[-1] if sorted_dates else "none")
     for d in sorted_dates:
         ps = grouped[d]
 
