@@ -1,12 +1,44 @@
 import json
 import os
 import re
+import httpx
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
-from app.services.gemini_client import generate_text
+from app.core.config import settings
 from app.services.events_ingest_downtown import RawEvent
+
+
+def generate_text(prompt: str) -> str:
+    """
+    Generate text using Gemini via OpenRouter.
+    Synchronous wrapper for shopline_engine compatibility.
+    """
+    if not settings.openrouter_api_key or not settings.openrouter_api_key.strip():
+        return '{"categories": []}'
+    
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.openrouter_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": settings.gemini_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "max_tokens": 500,
+                },
+            )
+            response.raise_for_status()
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+    except Exception as e:
+        # Fallback on error
+        return '{"categories": []}'
 
 
 CANONICAL_CATEGORIES: List[str] = [

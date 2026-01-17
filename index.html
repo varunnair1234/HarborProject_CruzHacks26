@@ -1539,6 +1539,10 @@
             const errorEl = document.getElementById('auth-error');
             const successEl = document.getElementById('auth-success');
 
+            // Clear previous messages
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
             try {
                 const response = await fetch(`${BACKEND_URL}/auth/login`, {
                     method: 'POST',
@@ -1558,6 +1562,10 @@
                 }
 
                 const data = await response.json();
+                if (!data.access_token) {
+                    throw new Error('No access token received from server');
+                }
+                
                 setAuthToken(data.access_token);
                 successEl.textContent = 'Login successful!';
                 successEl.style.display = 'block';
@@ -1567,7 +1575,15 @@
                     checkAuth();
                 }, 500);
             } catch (err) {
-                errorEl.textContent = err.message;
+                console.error('Login error:', err);
+                // Handle network errors specifically
+                if (err.name === 'TypeError' && err.message.includes('fetch')) {
+                    errorEl.textContent = 'Network error: Could not connect to server. Please check your connection and try again.';
+                } else if (err.message) {
+                    errorEl.textContent = err.message;
+                } else {
+                    errorEl.textContent = 'Login failed. Please try again.';
+                }
                 errorEl.style.display = 'block';
                 successEl.style.display = 'none';
             }
