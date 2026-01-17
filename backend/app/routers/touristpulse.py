@@ -93,25 +93,33 @@ async def fetch_traffic_data() -> Dict:
 def load_events() -> List[Dict]:
     """Load events from CSV file"""
     events = []
+    # Get the backend directory (parent of app directory)
+    # __file__ is: backend/app/routers/touristpulse.py
+    # So backend_dir should be: backend/
+    current_file = os.path.abspath(__file__)  # /path/to/backend/app/routers/touristpulse.py
+    app_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))  # /path/to/backend
+    backend_dir = app_dir  # backend directory
+    
     # Try multiple possible paths for the CSV
-    # Get the base directory (backend folder)
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     possible_paths = [
-        os.path.join(backend_dir, "santa_cruz_events_combined.csv"),  # backend/santa_cruz_events_combined.csv
-        os.path.join(os.path.dirname(__file__), "../../../santa_cruz_events_combined.csv"),
-        os.path.join(os.path.dirname(__file__), "../../../backend/santa_cruz_events_combined.csv"),
-        os.path.join(os.path.dirname(__file__), "../../../public/santa_cruz_events_combined.csv"),
-        "santa_cruz_events_combined.csv",
-        "public/santa_cruz_events_combined.csv"
+        os.path.join(backend_dir, "santa_cruz_events_combined.csv"),  # backend/santa_cruz_events_combined.csv (most likely on Render)
+        os.path.join(os.path.dirname(current_file), "../../../santa_cruz_events_combined.csv"),  # Relative from router
+        os.path.join(os.getcwd(), "santa_cruz_events_combined.csv"),  # Current working directory
+        os.path.join(os.getcwd(), "backend", "santa_cruz_events_combined.csv"),  # If cwd is repo root
+        "santa_cruz_events_combined.csv",  # Just filename (if in cwd)
     ]
     
-    logger.info(f"Attempting to load events CSV. Backend dir: {backend_dir}")
+    logger.info(f"Attempting to load events CSV")
+    logger.info(f"Current file: {current_file}")
+    logger.info(f"Backend dir: {backend_dir}")
     logger.info(f"Current working directory: {os.getcwd()}")
     
     for path in possible_paths:
         abs_path = os.path.abspath(path)
-        logger.info(f"Trying path: {abs_path} (exists: {os.path.exists(path)})")
-        if os.path.exists(path):
+        exists = os.path.exists(path)
+        logger.info(f"Trying path: {abs_path} (exists: {exists})")
+        
+        if exists:
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
@@ -123,16 +131,16 @@ def load_events() -> List[Dict]:
                                 'location': row.get('location', 'Santa Cruz'),
                                 'type': row.get('type', 'community')
                             })
-                logger.info(f"Successfully loaded {len(events)} events from {abs_path}")
-                break
+                logger.info(f"✅ Successfully loaded {len(events)} events from {abs_path}")
+                return events  # Return immediately on success
             except Exception as e:
                 logger.error(f"Failed to load events from {path}: {e}", exc_info=True)
                 continue
     
-    if not events:
-        logger.warning("No events loaded from CSV, using empty list (this is okay, predictions will still work)")
-    
-    return events
+    # If we get here, no CSV was found
+    logger.warning("⚠️ No events CSV file found. Predictions will work without event data.")
+    logger.warning(f"Checked paths: {[os.path.abspath(p) for p in possible_paths]}")
+    return events  # Return empty list
 
 
 def get_weather_condition(weathercode: int) -> str:
