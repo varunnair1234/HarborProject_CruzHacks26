@@ -134,16 +134,17 @@
         }
 
         .outlook-card {
-            background: white;
+            background: #fef7f0;
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f5e6d3;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .outlook-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
         }
 
         .card-header {
@@ -153,10 +154,28 @@
             margin-bottom: 1rem;
         }
 
+        .card-date-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .card-day {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #9ca3af;
+        }
+
         .card-date {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #374151;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .activity-badge-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .activity-badge {
@@ -167,12 +186,12 @@
             border-radius: 20px;
             font-size: 0.875rem;
             font-weight: 600;
-            text-transform: uppercase;
+            white-space: nowrap;
         }
 
         .activity-badge.high {
-            background: #fef3c7;
-            color: #92400e;
+            background: #fed7aa;
+            color: #9a3412;
         }
 
         .activity-badge.moderate {
@@ -185,9 +204,44 @@
             color: #92400e;
         }
 
+        .activity-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .activity-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .activity-progress-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .activity-progress-bar {
+            width: 60px;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .activity-progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #4b5563, #6b7280);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
         .activity-percentage {
-            font-size: 0.75rem;
-            opacity: 0.8;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
         }
 
         .card-summary {
@@ -195,6 +249,16 @@
             line-height: 1.6;
             color: #4b5563;
             font-size: 0.95rem;
+            font-style: italic;
+            padding: 0 0.5rem;
+        }
+
+        .card-summary::before {
+            content: '"';
+        }
+
+        .card-summary::after {
+            content: '"';
         }
 
         .key-drivers {
@@ -206,14 +270,17 @@
         .key-drivers-title {
             font-size: 0.875rem;
             font-weight: 600;
-            color: #6b7280;
+            color: #4b5563;
             margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .driver-item {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            margin-right: 1rem;
             margin-bottom: 0.5rem;
             font-size: 0.875rem;
             color: #374151;
@@ -226,12 +293,14 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            color: #86efac;
         }
 
         .driver-icon svg {
             width: 18px;
             height: 18px;
             stroke: currentColor;
+            stroke-width: 2;
         }
 
         .empty-state {
@@ -1706,18 +1775,43 @@
                                      day.demand_level === 'moderate' ? 'moderate' : 
                                      'low';
                 const confidencePercent = day.confidence ? Math.round(day.confidence * 100) : 0;
+                const { dayName, dateStr } = formatDateWithDay(day.date);
+
+                // Activity icon SVG
+                const activityIcon = activityClass === 'high' 
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>`
+                    : activityClass === 'moderate'
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>`
+                    : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>`;
 
                 card.innerHTML = `
                     <div class="card-header">
-                        <div class="card-date">${formatDate(day.date)}</div>
-                        <div class="activity-badge ${activityClass}">
-                            ${activityLabel}
-                            <span class="activity-percentage">${confidencePercent}%</span>
+                        <div class="card-date-container">
+                            <div class="card-day">${dayName}</div>
+                            <div class="card-date">${dateStr}</div>
+                        </div>
+                        <div class="activity-badge-container">
+                            <div class="activity-badge ${activityClass}">
+                                <div class="activity-icon">${activityIcon}</div>
+                                ${activityLabel}
+                            </div>
+                            <div class="activity-progress-container">
+                                <div class="activity-progress-bar">
+                                    <div class="activity-progress-fill" style="width: ${confidencePercent}%"></div>
+                                </div>
+                                <span class="activity-percentage">${confidencePercent}%</span>
+                            </div>
                         </div>
                     </div>
                     ${day.summary ? `<div class="card-summary">${day.summary}</div>` : ''}
                     <div class="key-drivers">
-                        <div class="key-drivers-title">Key Drivers</div>
+                        <div class="key-drivers-title">KEY DRIVERS</div>
                         ${weatherText ? `
                             <div class="driver-item">
                                 <div class="driver-icon">
