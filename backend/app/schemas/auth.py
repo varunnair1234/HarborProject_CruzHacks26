@@ -8,13 +8,13 @@ class BusinessSignup(BaseModel):
     business_name: str = Field(..., min_length=1, max_length=255)
     address: str = Field(..., min_length=1, max_length=500)
     business_type: Literal["cafe", "boutique", "bakery/dessert", "bookstore/stationary", "art"]
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=72, description="Password must be 8-72 characters")
 
 
 class BusinessLogin(BaseModel):
     """Business login request"""
     email: EmailStr
-    password: str
+    password: str = Field(..., max_length=72, description="Password must be 72 characters or less")
 
 
 class Token(BaseModel):
