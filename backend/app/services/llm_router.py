@@ -35,7 +35,8 @@ class LLMRouter:
         
         Returns JSON with: bullets, actions, confidence_note
         """
-        prompt = f"""You are a financial advisor analyzing cash flow for a small business.
+        try:
+            prompt = f"""You are a financial advisor analyzing cash flow for a small business.
 
 Given these metrics:
 - Average daily revenue: ${metrics['avg_daily_revenue']:.2f}
@@ -62,44 +63,56 @@ Provide analysis as JSON with exactly these fields:
 
 Keep bullets concise (1 sentence each). Actions should be specific and actionable."""
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                LLMRouter.OPENROUTER_BASE_URL,
-                headers={
-                    "Authorization": f"Bearer {settings.openrouter_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.deepseek_r1_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                    "max_tokens": 1000,
-                }
-            )
-            response.raise_for_status()
+            logger.info(f"Calling OpenRouter API with model: {settings.deepseek_r1_model}")
             
-            result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            
-            # Parse JSON from response
-            try:
-                # Try to extract JSON if wrapped in markdown
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].split("```")[0].strip()
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    LLMRouter.OPENROUTER_BASE_URL,
+                    headers={
+                        "Authorization": f"Bearer {settings.openrouter_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.deepseek_r1_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3,
+                        "max_tokens": 1000,
+                    }
+                )
                 
-                parsed = json.loads(content)
-                logger.info("DeepSeek R1 response parsed successfully")
-                return parsed
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse DeepSeek response: {e}")
-                # Fallback response
-                return {
-                    "bullets": ["Analysis complete", "Review metrics above", "Contact advisor for details"],
-                    "actions": ["Monitor trends", "Review fixed costs", "Plan contingencies"],
-                    "confidence_note": f"Based on {metrics['confidence']:.0%} confidence score"
-                }
+                logger.info(f"OpenRouter response status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    error_text = response.text
+                    logger.error(f"OpenRouter API error: {response.status_code} - {error_text}")
+                    raise Exception(f"OpenRouter returned {response.status_code}: {error_text}")
+                
+                response.raise_for_status()
+                
+                result = response.json()
+                content = result["choices"][0]["message"]["content"]
+                
+                # Parse JSON from response
+                try:
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0].strip()
+                    elif "```" in content:
+                        content = content.split("```")[1].split("```")[0].strip()
+                    
+                    parsed = json.loads(content)
+                    logger.info("DeepSeek R1 response parsed successfully")
+                    return parsed
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse DeepSeek response: {e}")
+                    # Fallback response
+                    return {
+                        "bullets": ["Analysis complete", "Review metrics above", "Contact advisor for details"],
+                        "actions": ["Monitor trends", "Review fixed costs", "Plan contingencies"],
+                        "confidence_note": f"Based on {metrics['confidence']:.0%} confidence score"
+                    }
+        except Exception as e:
+            logger.error(f"DeepSeek R1 call failed completely: {type(e).__name__}: {str(e)}")
+            raise
     
     @staticmethod
     @retry(
