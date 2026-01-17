@@ -18,6 +18,8 @@ from app.schemas.touristpulse import (
     DemandSignal,
 )
 from app.core.config import settings
+from app.services.cache import CacheService
+from app.services.llm_router import LLMRouter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/touristpulse", tags=["touristpulse"])
@@ -291,8 +293,8 @@ def _normalize_llm_output(prediction: Dict[str, Any]) -> Dict[str, Any]:
     return {"level": "normal", "factor": 1.0, "reasoning": "Unable to generate prediction", "confidence": 0.5}
 
 
-async def call_llm_for_prediction(date_str: str, location: str, weather: Dict[str, Any], traffic: Dict[str, Any], events: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Call DeepSeek via OpenRouter for tourism prediction; fallback if no key."""
+async def call_llm_for_prediction(date_str: str, location: str, weather: Dict[str, Any], traffic: Dict[str, Any], events: List[Dict[str, Any]], db: Session = None) -> Dict[str, Any]:
+    """Call DeepSeek via OpenRouter for tourism prediction; fallback if no key. Uses caching if db provided."""
     try:
         openrouter_key = settings.openrouter_api_key
 
@@ -309,6 +311,15 @@ async def call_llm_for_prediction(date_str: str, location: str, weather: Dict[st
             return {"level": level, "factor": factor, "reasoning": "Prediction based on weather and events (LLM unavailable)", "confidence": 0.6}
 
         input_payload = _build_llm_input(date_str, location, weather, traffic, events)
+        
+        # Check cache if db is provided
+        if db:
+            cache_key = LLMRouter.generate_cache_key(input_payload, "deepseek-touristpulse")
+            cached_result = CacheService.get_llm_output(db, cache_key)
+            if cached_result:
+                logger.info(f"Using cached prediction for {date_str}")
+                return cached_result
+        
         input_json = json.dumps(input_payload, ensure_ascii=False)
 
         prompt = f"""<TouristPulseRole>
@@ -473,7 +484,14 @@ Additional constraints:
                             raise ValueError(f"Could not parse JSON from LLM response: {content[:200]}")
 
                 if raw:
-                    return _normalize_llm_output(raw)
+                    normalized = _normalize_llm_output(raw)
+                    # Cache the result if db is provided
+                    if db:
+                        try:
+                            CacheService.set_llm_output(db, cache_key, "deepseek-touristpulse", normalized)
+                        except Exception as e:
+                            logger.warning(f"Failed to cache prediction: {e}")
+                    return normalized
                     
             except httpx.TimeoutException as e:
                 last_error = f"Timeout (attempt {attempt + 1}/{max_retries})"
@@ -590,6 +608,7 @@ async def get_tourist_outlook(
                 },
                 traffic_data,
                 day_events,
+                db=db,
             )
 
             level_map = {"low": "low", "normal": "moderate", "high": "high", "very_high": "very_high"}
