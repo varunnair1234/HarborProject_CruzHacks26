@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
-from backend.app.services.gemini_client import generate_text
-from backend.app.services.events_ingest_downtown import RawEvent
+from app.services.gemini_client import generate_text
+from app.services.events_ingest_downtown import RawEvent
 
 
 CANONICAL_CATEGORIES: List[str] = [
