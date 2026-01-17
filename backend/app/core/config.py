@@ -4,10 +4,15 @@ from typing import Optional
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
-    
+
     # Database
     database_url: str = "sqlite:///./harbor.db"
-    
+
+    # JWT Authentication
+    secret_key: str = "your-secret-key-change-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440  # 24 hours
+
     # API Keys
     openrouter_api_key: str
     
