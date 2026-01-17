@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from collections import defaultdict
 import logging
 import httpx
@@ -86,7 +86,11 @@ async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
 
 
 def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
-    """Convert NWS forecast periods into daily summaries."""
+    """Convert NWS forecast periods into daily summaries.""", timedelta
+    
+    today = date.today()
+    logger.info("Filtering forecast: today is %s, requesting %d days", today, days)
+    
     grouped = defaultdict(list)
     for p in periods:
         start_time = p.get("startTime")
@@ -101,10 +105,18 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
         except Exception:
             continue
 
-        grouped[dt.date()].append(p)
+        period_date = dt.date()
+        # Only include dates from today onwards (filter out past dates)
+        if period_date >= today:
+            grouped[period_date].append(p)
+        else:
+            logger.debug("Filtered out past date: %s (today is %s)", period_date, today)
 
     daily: List[dict] = []
-    for d in sorted(grouped.keys())[:days]:
+    # Sort dates and take only future dates starting from today, limit to requested days
+    sorted_dates = sorted([d for d in grouped.keys() if d >= today])[:days]
+    logger.info("After filtering: %d dates from %s to %s", len(sorted_dates), sorted_dates[0] if sorted_dates else "none", sorted_dates[-1] if sorted_dates else "none")
+    for d in sorted_dates:
         ps = grouped[d]
 
         temps = [p.get("temperature") for p in ps if isinstance(p.get("temperature"), (int, float))]
@@ -213,8 +225,17 @@ def load_events() -> List[Dict[str, Any]]:
 
 def _build_llm_input(date_str: str, location: str, weather: Dict[str, Any], traffic: Dict[str, Any], events: List[Dict[str, Any]]) -> Dict[str, Any]:
     congestion = traffic.get("flow", {}).get("congestionLevel", None)
+    
+    # Calculate day of week (0=Monday, 6=Sunday)
+    date_obj = datetime.fromisoformat(date_str).date()
+    day_of_week = date_obj.weekday()  # 0=Monday, 6=Sunday
+    is_weekend = day_of_week >= 5  # Saturday (5) or Sunday (6)
+    day_name = date_obj.strftime("%A")  # Full day name
+    
     return {
         "date": date_str,
+        "day_of_week": day_name,
+        "is_weekend": is_weekend,
         "location": location,
         "weather": {
             "condition": weather.get("condition"),
@@ -314,6 +335,24 @@ Style requirements:
 - Focus on “why” rather than “what to do.”
 </AudienceAndTone>
 
+<TemporalContext>
+Day of week significantly impacts tourism in Santa Cruz:
+- WEEKENDS (Saturday/Sunday): Expect 30-50% higher baseline tourism. Weekends are prime time for:
+  * Day trippers from Bay Area
+  * Beach visitors and surfers
+  * Boardwalk visitors
+  * Weekend getaways
+- WEEKDAYS (Monday-Friday): Lower baseline tourism, especially mid-week (Tuesday-Thursday)
+- FRIDAY: Transition day - higher than weekdays but lower than weekends
+- MONDAY: Often lower due to post-weekend lull
+
+When making predictions:
+- If is_weekend=true, start with higher baseline tourism expectation
+- Weekend + good weather + events = very high tourism potential
+- Weekday + events = moderate tourism (events help but fewer casual visitors)
+- Consider that weekend events draw more attendees than weekday events
+</TemporalContext>
+
 <EventWeighting>
 When evaluating events, weigh them based on expected attendance and draw:
 
@@ -341,6 +380,7 @@ Consider:
 - Venue size: Large venues = more attendees
 - Event type: Festivals > Music > Sports > Food/Markets > Community
 - Multiple events on same day amplify impact
+- Weekend events typically draw 2-3x more attendees than weekday events
 </EventWeighting>
 
 <Task>
@@ -348,10 +388,12 @@ Given the structured input signals below, produce a concise visitor demand outlo
 
 You must:
 1) Classify overall visitor activity as exactly one of: ["low", "moderate", "high"]
-2) Weight events appropriately based on their scale and location (see EventWeighting above)
-3) Explain the classification using coastal Santa Cruz logic, including surf-driven tourism ONLY if the input supports it.
-4) Identify which factors are driving demand up or down, noting which events are major vs minor contributors.
-5) Note any uncertainty or conflicting signals honestly.
+2) Consider day of week impact: weekends have significantly higher baseline tourism (see TemporalContext above)
+3) Weight events appropriately based on their scale and location (see EventWeighting above)
+4) Combine temporal context (weekend vs weekday) with weather and events to determine final level
+5) Explain the classification using coastal Santa Cruz logic, including surf-driven tourism ONLY if the input supports it.
+6) Identify which factors are driving demand up or down, noting which events are major vs minor contributors.
+7) Note any uncertainty or conflicting signals honestly.
 </Task>
 
 <OutputFormat>
@@ -499,6 +541,11 @@ async def get_tourist_outlook(
             raise HTTPException(status_code=502, detail="NWS API returned no forecast data")
 
         outlook: List[TouristPulseOutlook] = []
+
+        # Debug: log forecast dates
+        forecast_dates = [item["date"] for item in daily_forecast]
+        logger.info("Forecast dates being processed: %s", [str(d) for d in forecast_dates])
+        logger.info("Today is: %s", date.today())
 
         # Debug: log all loaded events and their dates
         logger.info("Total events loaded: %d", len(events))

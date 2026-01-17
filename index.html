@@ -1022,7 +1022,16 @@
         }
 
         function formatDate(dateString) {
-            const date = new Date(dateString);
+            // Handle both date strings and date objects
+            let date;
+            if (typeof dateString === 'string') {
+                // If it's just a date string (YYYY-MM-DD), parse it in local timezone
+                // to avoid timezone conversion issues
+                const [year, month, day] = dateString.split('-').map(Number);
+                date = new Date(year, month - 1, day);
+            } else {
+                date = new Date(dateString);
+            }
             return date.toLocaleDateString('en-US', {
                 weekday: 'short',
                 month: 'short',
