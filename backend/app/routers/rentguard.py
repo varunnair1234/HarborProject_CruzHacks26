@@ -43,17 +43,20 @@ async def analyze_rent_impact(
             )
         
         # Get base analysis
+        logger.info(f"Fetching analysis_id={input_data.analysis_id} for business_id={current_business.id}")
         analysis = db.query(Analysis).filter(
             Analysis.id == input_data.analysis_id,
             Analysis.business_id == current_business.id
         ).first()
         
         if not analysis:
+            logger.warning(f"Analysis not found: analysis_id={input_data.analysis_id}, business_id={current_business.id}")
             raise HTTPException(status_code=404, detail="Analysis not found")
         
         # Get fixed costs
         fixed_costs = analysis.fixed_costs
         if not fixed_costs:
+            logger.warning(f"Analysis {input_data.analysis_id} has no fixed costs")
             raise HTTPException(status_code=400, detail="Analysis has no fixed costs")
         
         # Defensive defaults: treat missing numeric fields as 0.0
@@ -66,6 +69,7 @@ async def analyze_rent_impact(
 
         # RentGuard requires a current rent value to simulate a change
         if fixed_costs_dict["rent"] <= 0:
+            logger.warning(f"Analysis {input_data.analysis_id} has invalid rent: {fixed_costs_dict['rent']}")
             raise HTTPException(
                 status_code=400,
                 detail="Analysis fixed costs missing a valid rent amount"
@@ -79,6 +83,7 @@ async def analyze_rent_impact(
         )
 
         if not daily_revenues:
+            logger.warning(f"Analysis {input_data.analysis_id} has no daily revenue history")
             raise HTTPException(
                 status_code=400,
                 detail="Analysis has no daily revenue history to analyze"
@@ -180,7 +185,7 @@ async def analyze_rent_impact(
         if "summary" not in explanation_dict:
             explanation_dict["summary"] = "Rent increase impact analysis completed."
 
-                # RentEngine may return additional fields over time; filter to schema-supported keys
+        # RentEngine may return additional fields over time; filter to schema-supported keys
         try:
             allowed_metric_keys = set(RentImpactMetrics.model_fields.keys())  # Pydantic v2
         except AttributeError:
@@ -196,11 +201,14 @@ async def analyze_rent_impact(
             created_at=scenario.created_at.isoformat()
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (404, 400, etc.) without wrapping
+        raise
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error in analyze_rent_impact: {e}")
+        logger.exception(f"Unexpected error in analyze_rent_impact: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -216,31 +224,37 @@ async def list_scenarios(
     
     Returns all simulated rent scenarios for a given analysis
     """
-    # Verify analysis exists and belongs to current business
-    analysis = db.query(Analysis).filter(
-        Analysis.id == analysis_id,
-        Analysis.business_id == current_business.id
-    ).first()
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    
-    # Get scenarios
-    scenarios = (
-        db.query(RentScenario)
-        .filter(RentScenario.analysis_id == analysis_id)
-        .order_by(RentScenario.created_at.desc())
-        .all()
-    )
-    
-    return [
-        {
-            "scenario_id": s.id,
-            "created_at": s.created_at.isoformat(),
-            "increase_pct": s.increase_pct,
-            "new_rent": s.new_rent,
-            "delta_monthly": s.delta_monthly,
-            "new_risk_state": s.new_risk_state,
-            "effective_date": s.effective_date.isoformat() if s.effective_date else None
-        }
-        for s in scenarios
-    ]
+    try:
+        # Verify analysis exists and belongs to current business
+        analysis = db.query(Analysis).filter(
+            Analysis.id == analysis_id,
+            Analysis.business_id == current_business.id
+        ).first()
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get scenarios
+        scenarios = (
+            db.query(RentScenario)
+            .filter(RentScenario.analysis_id == analysis_id)
+            .order_by(RentScenario.created_at.desc())
+            .all()
+        )
+        
+        return [
+            {
+                "scenario_id": s.id,
+                "created_at": s.created_at.isoformat(),
+                "increase_pct": s.increase_pct,
+                "new_rent": s.new_rent,
+                "delta_monthly": s.delta_monthly,
+                "new_risk_state": s.new_risk_state,
+                "effective_date": s.effective_date.isoformat() if s.effective_date else None
+            }
+            for s in scenarios
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error in list_scenarios: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

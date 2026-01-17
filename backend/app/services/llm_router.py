@@ -1,8 +1,7 @@
 import httpx
 import json
 import hashlib
-from typing import Dict, Optional
-from datetime import datetime, timedelta
+from typing import Dict
 from tenacity import retry, stop_after_attempt, wait_exponential
 import logging
 
@@ -13,28 +12,30 @@ logger = logging.getLogger(__name__)
 
 class LLMRouter:
     """Route LLM calls to appropriate models with retry logic"""
-    
+
     OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
     GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-    
+
     @staticmethod
     def generate_cache_key(input_data: Dict, model: str) -> str:
         """Generate deterministic cache key from input + model"""
         input_str = json.dumps(input_data, sort_keys=True)
         combined = f"{model}:{input_str}"
         return hashlib.sha256(combined.encode()).hexdigest()
-    
+
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def call_deepseek_r1(metrics: Dict, fixed_costs: Dict) -> Dict:
-        """
-        Call DeepSeek R1 for CashFlow explanation
-        
-        Returns JSON with: bullets, actions, confidence_note
-        """
+        """CashFlow explanation (JSON: bullets, actions, confidence_note)"""
+
+        if not settings.openrouter_api_key or not settings.openrouter_api_key.strip():
+            logger.warning("OPENROUTER_API_KEY not configured; returning fallback for DeepSeek R1")
+            return {
+                "bullets": ["Analysis complete", "Review metrics above", "Add API key for richer insights"],
+                "actions": ["Monitor trends", "Review fixed costs", "Plan contingencies"],
+                "confidence_note": f"Based on {metrics.get('confidence', 0):.0%} confidence score",
+            }
+
         prompt = f"""You are a financial advisor analyzing cash flow for a small business.
 
 Given these metrics:
@@ -74,44 +75,43 @@ Keep bullets concise (1 sentence each). Actions should be specific and actionabl
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
                     "max_tokens": 1000,
-                }
+                },
             )
             response.raise_for_status()
-            
+
             result = response.json()
             content = result["choices"][0]["message"]["content"]
-            
-            # Parse JSON from response
+
             try:
-                # Try to extract JSON if wrapped in markdown
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
                     content = content.split("```")[1].split("```")[0].strip()
-                
+
                 parsed = json.loads(content)
                 logger.info("DeepSeek R1 response parsed successfully")
                 return parsed
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse DeepSeek response: {e}")
-                # Fallback response
+                logger.error(f"Failed to parse DeepSeek R1 response: {e}")
                 return {
                     "bullets": ["Analysis complete", "Review metrics above", "Contact advisor for details"],
                     "actions": ["Monitor trends", "Review fixed costs", "Plan contingencies"],
-                    "confidence_note": f"Based on {metrics['confidence']:.0%} confidence score"
+                    "confidence_note": f"Based on {metrics['confidence']:.0%} confidence score",
                 }
-    
+
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def call_deepseek_v3(impact_metrics: Dict, context: Dict) -> Dict:
-        """
-        Call DeepSeek V3 for RentGuard explanation
-        
-        Returns JSON with: summary, concerns, recommendations
-        """
+        """RentGuard explanation (JSON: summary, concerns, recommendations)"""
+
+        if not settings.openrouter_api_key or not settings.openrouter_api_key.strip():
+            logger.warning("OPENROUTER_API_KEY not configured; returning fallback for DeepSeek V3")
+            return {
+                "summary": f"Rent increase of {impact_metrics.get('delta_pct', 0):.1f}% analyzed.",
+                "concerns": ["Impact on cash flow", "Risk state change"],
+                "recommendations": ["Review budget", "Negotiate terms", "Monitor closely"],
+            }
+
         prompt = f"""You are a financial advisor analyzing the impact of a rent increase.
 
 Current situation:
@@ -144,19 +144,19 @@ Be honest but constructive. Focus on actionable advice."""
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
                     "max_tokens": 800,
-                }
+                },
             )
             response.raise_for_status()
-            
+
             result = response.json()
             content = result["choices"][0]["message"]["content"]
-            
+
             try:
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
                     content = content.split("```")[1].split("```")[0].strip()
-                
+
                 parsed = json.loads(content)
                 logger.info("DeepSeek V3 response parsed successfully")
                 return parsed
@@ -165,20 +165,22 @@ Be honest but constructive. Focus on actionable advice."""
                 return {
                     "summary": f"Rent increase of {impact_metrics['delta_pct']:.1f}% analyzed",
                     "concerns": ["Impact on cash flow", "Risk state change"],
-                    "recommendations": ["Review budget", "Negotiate terms", "Monitor closely"]
+                    "recommendations": ["Review budget", "Negotiate terms", "Monitor closely"],
                 }
-    
+
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def call_gemini(business_profile: Dict, ranking_context: Dict) -> Dict:
-        """
-        Call Gemini 2 Flash for Shopline featured business blurbs
-        
-        Returns JSON with: blurb, highlights, score
-        """
+        """Shopline featured business blurbs (JSON: blurb, highlights, score)"""
+
+        if not settings.google_api_key or not settings.google_api_key.strip():
+            logger.warning("GOOGLE_API_KEY not configured; using fallback for Gemini calls")
+            return {
+                "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
+                "highlights": ["Local favorite", "Quality service", "Community focused"],
+                "score": 75.0,
+            }
+
         prompt = f"""Generate a compelling featured business description.
 
 Business: {business_profile.get('name')}
@@ -196,51 +198,43 @@ Create JSON with:
 Make it appealing but honest. Score should reflect local appeal, uniqueness, and quality."""
 
         url = f"{LLMRouter.GEMINI_BASE_URL}/{settings.gemini_model}:generateContent?key={settings.google_api_key}"
-        
-        if not settings.google_api_key:
-            logger.error("Missing GOOGLE_API_KEY (settings.google_api_key) for Gemini call")
-            raise ValueError("Missing GOOGLE_API_KEY")
-        
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 url,
                 headers={"Content-Type": "application/json"},
                 json={
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.7,
-                        "maxOutputTokens": 500,
-                    }
-                }
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 500},
+                },
             )
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                # Log the exact status + body to diagnose auth/quota/model issues
-                status = e.response.status_code if e.response is not None else "unknown"
-                body = e.response.text if e.response is not None else ""
-                safe_url = url.split("?key=")[0]  # avoid leaking key
-                logger.error(f"Gemini HTTP error status={status} url={safe_url} body={body}")
-                raise
+
+            if response.status_code >= 400:
+                safe_url = url.split("?key=")[0]
+                logger.error(f"Gemini HTTP error status={response.status_code} url={safe_url} body={response.text}")
+                # graceful fallback instead of crashing your endpoint
+                return {
+                    "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
+                    "highlights": ["Local favorite", "Quality service", "Community focused"],
+                    "score": 75.0,
+                }
 
             result = response.json()
             content = result["candidates"][0]["content"]["parts"][0]["text"]
-            
+
             try:
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
                     content = content.split("```")[1].split("```")[0].strip()
-                
+
                 parsed = json.loads(content)
                 logger.info("Gemini response parsed successfully")
                 return parsed
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse Gemini response: {e}")
                 return {
-                    "blurb": f"Featured local business in {business_profile.get('category')}",
+                    "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
                     "highlights": ["Local favorite", "Quality service", "Community focused"],
-                    "score": 75.0
+                    "score": 75.0,
                 }

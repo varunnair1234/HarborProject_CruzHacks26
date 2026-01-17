@@ -39,7 +39,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="forbid",
+        extra="ignore",  # Changed from "forbid" to "ignore" for deployment stability
     )
 
 
