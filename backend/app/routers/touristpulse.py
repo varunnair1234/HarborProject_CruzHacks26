@@ -30,13 +30,21 @@ async def fetch_weather_data(days: int = 30) -> Dict:
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={SANTA_CRUZ_LAT}&longitude={SANTA_CRUZ_LON}&hourly=temperature_2m,weathercode,precipitation_probability&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America%2FLos_Angeles&forecast_days={days}"
         
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(url)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            logger.info(f"Successfully fetched weather data: {len(data.get('daily', {}).get('time', []))} days")
+            return data
+    except httpx.TimeoutException as e:
+        logger.error(f"Weather API timeout: {e}")
+        raise HTTPException(status_code=500, detail="Weather API request timed out")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Weather API HTTP error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=500, detail=f"Weather API error: {e.response.status_code}")
     except Exception as e:
-        logger.error(f"Failed to fetch weather data: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch weather data")
+        logger.error(f"Failed to fetch weather data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
 
 
 async def fetch_traffic_data() -> Dict:
@@ -86,15 +94,23 @@ def load_events() -> List[Dict]:
     """Load events from CSV file"""
     events = []
     # Try multiple possible paths for the CSV
+    # Get the base directory (backend folder)
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     possible_paths = [
-        os.path.join(os.path.dirname(__file__), "../../../public/santa_cruz_events_combined.csv"),
+        os.path.join(backend_dir, "santa_cruz_events_combined.csv"),  # backend/santa_cruz_events_combined.csv
         os.path.join(os.path.dirname(__file__), "../../../santa_cruz_events_combined.csv"),
         os.path.join(os.path.dirname(__file__), "../../../backend/santa_cruz_events_combined.csv"),
-        "public/santa_cruz_events_combined.csv",
-        "santa_cruz_events_combined.csv"
+        os.path.join(os.path.dirname(__file__), "../../../public/santa_cruz_events_combined.csv"),
+        "santa_cruz_events_combined.csv",
+        "public/santa_cruz_events_combined.csv"
     ]
     
+    logger.info(f"Attempting to load events CSV. Backend dir: {backend_dir}")
+    logger.info(f"Current working directory: {os.getcwd()}")
+    
     for path in possible_paths:
+        abs_path = os.path.abspath(path)
+        logger.info(f"Trying path: {abs_path} (exists: {os.path.exists(path)})")
         if os.path.exists(path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
@@ -107,11 +123,14 @@ def load_events() -> List[Dict]:
                                 'location': row.get('location', 'Santa Cruz'),
                                 'type': row.get('type', 'community')
                             })
-                logger.info(f"Loaded {len(events)} events from {path}")
+                logger.info(f"Successfully loaded {len(events)} events from {abs_path}")
                 break
             except Exception as e:
-                logger.error(f"Failed to load events from {path}: {e}")
+                logger.error(f"Failed to load events from {path}: {e}", exc_info=True)
                 continue
+    
+    if not events:
+        logger.warning("No events loaded from CSV, using empty list (this is okay, predictions will still work)")
     
     return events
 
@@ -138,13 +157,23 @@ async def call_llm_for_prediction(date_str: str, weather: Dict, traffic: Dict, e
     try:
         # Use OpenRouter API key (same as other modules)
         openrouter_key = settings.openrouter_api_key
+        
         if not openrouter_key:
             logger.warning("OpenRouter API key not found, using fallback prediction")
+            # Return a simple prediction based on weather and events
+            level = "normal"
+            factor = 1.0
+            if weather.get('condition', '').lower() in ['clear sky', 'sunny']:
+                level = "high"
+                factor = 1.3
+            if len(events) > 0:
+                level = "high"
+                factor = 1.5
             return {
-                "level": "normal",
-                "factor": 1.0,
-                "reasoning": "OpenRouter API key not configured",
-                "confidence": 0.5
+                "level": level,
+                "factor": factor,
+                "reasoning": "Prediction based on weather and events (LLM unavailable)",
+                "confidence": 0.6
             }
         
         # Build prompt
@@ -349,6 +378,16 @@ async def get_tourist_outlook(
             generated_at=datetime.utcnow().isoformat()
         )
         
+    except HTTPException as e:
+        # Re-raise HTTP exceptions (like from fetch_weather_data)
+        logger.error(f"HTTPException in tourist outlook: {e.detail}")
+        raise
     except Exception as e:
         logger.error(f"Failed to generate tourist outlook: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to generate outlook: {str(e)}")
+        # Return error details in response for debugging
+        error_msg = str(e)
+        error_type = type(e).__name__
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate outlook: {error_type}: {error_msg}. Check backend logs for details."
+        )
