@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./harbor.db"
     
     # API Keys
-    openrouter_api_key: str
-    google_api_key: str
+    openrouter_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
     
     # LLM Models
     deepseek_r1_model: str = "deepseek/deepseek-r1"
