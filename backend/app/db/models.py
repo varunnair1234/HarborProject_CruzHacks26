@@ -2,8 +2,6 @@ from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKe
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
 
 Base = declarative_base()
 
@@ -129,39 +127,3 @@ class BusinessProfile(Base):
     # Relationship
     business = relationship("Business", backref="profile", uselist=False)
 
-
-class BusinessProfileInput(BaseModel):
-    """Business profile financial information"""
-    monthly_rent: float = Field(..., gt=0, description="Monthly rent")
-    monthly_payroll: float = Field(..., ge=0, description="Monthly payroll")
-    other_fixed_costs: float = Field(default=0.0, ge=0, description="Other monthly fixed costs")
-    cash_on_hand: float = Field(None, ge=0, description="Current cash reserves")
-    variable_cost_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="Variable costs as fraction of revenue")
-
-
-class BusinessProfileResponse(BaseModel):
-    """Business profile response"""
-    id: int
-    business_id: int
-    monthly_rent: float
-    monthly_payroll: float
-    other_fixed_costs: float
-    cash_on_hand: Optional[float]
-    variable_cost_rate: float
-    created_at: str
-    
-    class Config:
-        from_attributes = True
-
-
-class BusinessFullInfo(BaseModel):
-    """Complete business info with profile"""
-    id: int
-    email: str
-    business_name: str
-    address: str
-    business_type: str
-    profile: Optional[BusinessProfileResponse] = None
-    
-    class Config:
-        from_attributes = True
