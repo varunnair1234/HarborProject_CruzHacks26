@@ -210,6 +210,7 @@ async def get_current_user_info(
     business: Business = Depends(get_current_business)
 ):
     """Get current authenticated business information"""
+    logger.info(f"Fetching profile for business ID: {business.id}, email: {business.email}")
     return BusinessInfo(
         id=business.id,
         email=business.email,
@@ -217,3 +218,26 @@ async def get_current_user_info(
         address=business.address,
         business_type=business.business_type
     )
+
+
+@router.get("/debug/businesses", tags=["debug"])
+async def list_all_businesses(
+    db: Session = Depends(get_db)
+):
+    """Debug endpoint to list all businesses in the database"""
+    businesses = db.query(Business).all()
+    return {
+        "count": len(businesses),
+        "businesses": [
+            {
+                "id": b.id,
+                "email": b.email,
+                "business_name": b.business_name,
+                "address": b.address,
+                "business_type": b.business_type,
+                "created_at": b.created_at.isoformat() if b.created_at else None,
+                "is_active": b.is_active
+            }
+            for b in businesses
+        ]
+    }

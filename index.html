@@ -1542,17 +1542,23 @@
                 }
 
                 const data = await response.json();
+                console.log('Profile data received:', data);
                 
                 // Update profile fields
-                document.getElementById('profile-business-name').textContent = data.business_name;
-                document.getElementById('profile-email').textContent = data.email;
-                document.getElementById('profile-address').textContent = data.address;
-                document.getElementById('profile-business-type').textContent = data.business_type;
-                document.getElementById('profile-id').textContent = `#${data.id}`;
+                if (!data.business_name || !data.email) {
+                    throw new Error('Invalid profile data received from server');
+                }
+                
+                document.getElementById('profile-business-name').textContent = data.business_name || 'N/A';
+                document.getElementById('profile-email').textContent = data.email || 'N/A';
+                document.getElementById('profile-address').textContent = data.address || 'N/A';
+                document.getElementById('profile-business-type').textContent = data.business_type || 'N/A';
+                document.getElementById('profile-id').textContent = `#${data.id || 'N/A'}`;
 
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
             } catch (err) {
+                console.error('Profile loading error:', err);
                 loadingEl.style.display = 'none';
                 errorEl.textContent = err.message || 'Failed to load profile information';
                 errorEl.style.display = 'block';
