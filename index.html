@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harbor - TouristPulse</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(to bottom right, #f8fafc, #e0e7ff);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #0A4D68;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            border-radius: 8px;
+            padding: 1.5rem;
+            color: #c33;
+            margin: 2rem 0;
+        }
+
+        .error code {
+            background: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+
+        .outlook-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .outlook-card {
+            padding: 1.5rem;
+            border: 2px solid;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .outlook-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .outlook-card.low {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+
+        .outlook-card.moderate {
+            background: #bfdbfe;
+            border-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        .outlook-card.high {
+            background: #bbf7d0;
+            border-color: #22c55e;
+            color: #166534;
+        }
+
+        .outlook-card.very_high {
+            background: #d8b4fe;
+            border-color: #a855f7;
+            color: #6b21a8;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-date {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .card-level {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .card-confidence {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        .card-summary {
+            font-size: 0.9rem;
+            margin-top: 0.75rem;
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        .card-drivers {
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid currentColor;
+            opacity: 0.8;
+        }
+
+        .card-drivers ul {
+            margin-top: 0.5rem;
+            padding-left: 1.25rem;
+        }
+
+        .card-drivers li {
+            margin: 0.25rem 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Harbor - TouristPulse</h1>
+        <p class="subtitle">30-Day Tourism Forecast for Santa Cruz</p>
+        
+        <div id="loading" class="loading">Loading tourism predictions...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="outlook" class="outlook-grid" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Backend URL - update this to your backend URL
+        const BACKEND_URL = 'https://harborproject-cruzhacks26.onrender.com';
+        const LOCATION = 'Santa Cruz';
+        const DAYS = 30;
+
+        // Get level label
+        function getLevelLabel(level) {
+            const labels = {
+                'low': 'LOW',
+                'moderate': 'NORMAL',
+                'high': 'HIGH',
+                'very_high': 'VERY HIGH'
+            };
+            return labels[level] || level.toUpperCase();
+        }
+
+        // Get level class
+        function getLevelClass(level) {
+            return level === 'very_high' ? 'very_high' : level;
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Load tourist outlook
+        async function loadTouristOutlook() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const outlookEl = document.getElementById('outlook');
+
+            try {
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                outlookEl.style.display = 'none';
+
+                const response = await fetch(
+                    `${BACKEND_URL}/touristpulse/outlook?location=${encodeURIComponent(LOCATION)}&days=${DAYS}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Backend API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.outlook || data.outlook.length === 0) {
+                    throw new Error('No outlook data received');
+                }
+
+                displayOutlook(data.outlook);
+                
+            } catch (err) {
+                console.error('Error loading tourist outlook:', err);
+                errorEl.innerHTML = `
+                    <strong>Error:</strong> ${err.message}
+                    <code>Make sure the Python backend is running at ${BACKEND_URL}</code>
+                `;
+                errorEl.style.display = 'block';
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        // Display outlook data
+        function displayOutlook(outlook) {
+            const outlookEl = document.getElementById('outlook');
+            outlookEl.innerHTML = '';
+
+            if (outlook.length === 0) {
+                outlookEl.innerHTML = '<div class="empty-state">No outlook data available</div>';
+                outlookEl.style.display = 'block';
+                return;
+            }
+
+            outlook.forEach(day => {
+                const card = document.createElement('div');
+                card.className = `outlook-card ${getLevelClass(day.demand_level)}`;
+
+                const driversHtml = day.drivers && day.drivers.length > 0
+                    ? `
+                        <div class="card-drivers">
+                            <strong>Drivers:</strong>
+                            <ul>
+                                ${day.drivers.map(driver => 
+                                    `<li>${driver.source}: ${driver.factor} (${driver.impact}, weight: ${driver.weight.toFixed(2)})</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    `
+                    : '';
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <div class="card-date">${formatDate(day.date)}</div>
+                            <div class="card-level">Level: ${getLevelLabel(day.demand_level)}</div>
+                            ${day.confidence ? `<div class="card-confidence">(${Math.round(day.confidence * 100)}% confidence)</div>` : ''}
+                        </div>
+                    </div>
+                    ${day.summary ? `<div class="card-summary">${day.summary}</div>` : ''}
+                    ${driversHtml}
+                `;
+
+                outlookEl.appendChild(card);
+            });
+
+            outlookEl.style.display = 'grid';
+        }
+
+        // Load on page load
+        window.addEventListener('DOMContentLoaded', loadTouristOutlook);
+    </script>
+</body>
+</html>
