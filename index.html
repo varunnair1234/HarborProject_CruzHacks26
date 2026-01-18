@@ -1853,7 +1853,7 @@
 </head>
 <body>
     <!-- Top right Business Login button -->
-    <button class="top-login-button" onclick="scrollToAuth()">Business Login</button>
+    <button class="top-login-button" id="top-login-button" onclick="scrollToAuth()">Business Login</button>
 
     <div class="container">
         <h1>Harbor</h1>
@@ -1880,11 +1880,7 @@
                     TouristPulse
                 </button>
                 <button class="tab-button" data-tab="cashflow" style="display: none;">
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13l4-4 4 4 6-6M3 21V9a2 2 0 012-2h14a2 2 0 012 2v12" />
-                        </svg>
-                    </span>
+                    <span class="tab-icon" style="font-weight: 700; font-size: 1.2rem;">$</span>
                     CashFlow
                 </button>
                 <button class="tab-button" data-tab="rentguard" style="display: none;">
@@ -2256,7 +2252,7 @@
                 <div class="hero-header">
                     <div class="hero-title-section">
                         <h1>Harbor</h1>
-                        <p class="hero-tagline">The operating system for small businesses in Santa Cruz</p>
+                        <p class="hero-tagline"><strong>Why Harbor?</strong> Get AI-powered cash flow analysis, tourism forecasts, and rent impact simulations—all in one place. Make data-driven decisions to keep your Santa Cruz business thriving.</p>
                         <div>
                             <div class="hero-location-badge">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px;">
@@ -2553,7 +2549,10 @@
 
         // Check auth on page load
         function checkAuth() {
+            const topLoginButton = document.getElementById('top-login-button');
             if (isAuthenticated()) {
+                // Hide login button and auth container when logged in
+                if (topLoginButton) topLoginButton.style.display = 'none';
                 document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('main-app').style.display = 'block';
                 document.getElementById('shopline-hero').style.display = 'block'; // Show hero when logged in
@@ -2563,6 +2562,8 @@
                 document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = '');
                 document.querySelectorAll('.tab-button[data-tab="profile"]').forEach(btn => btn.style.display = '');
             } else {
+                // Show login button and auth container when logged out
+                if (topLoginButton) topLoginButton.style.display = 'block';
                 document.getElementById('auth-container').style.display = 'block'; // Show at bottom
                 document.getElementById('main-app').style.display = 'block'; // Show main app but only Shopline tab
                 document.getElementById('shopline-hero').style.display = 'block'; // Show hero even when not logged in
