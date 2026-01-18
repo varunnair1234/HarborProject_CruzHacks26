@@ -42,12 +42,15 @@
         /* Tabs */
         .tabs {
             display: flex;
+            justify-content: center;
+            align-items: center;
             gap: 0.75rem;
             margin-bottom: 2rem;
             padding: 0.75rem;
             background: #fafafa;
             border-radius: 12px;
             flex-wrap: wrap;
+            position: relative;
         }
 
         .tab-button {
@@ -665,32 +668,106 @@
             border-top: 2px solid #e5e7eb;
         }
 
-        .history-section h4 {
-            color: #374151;
+        .history-section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             margin-bottom: 1rem;
-            font-size: 1rem;
         }
 
-        .history-item {
+        .history-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #6b7280;
+        }
+
+        .history-section-header h4 {
+            color: #374151;
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .analysis-history-card {
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .analysis-history-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .critical-card {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        }
+
+        .caution-card {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .healthy-card {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+
+        .analysis-history-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.75rem 1rem;
-            background: #f9fafb;
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: background 0.2s;
+            gap: 1rem;
         }
 
-        .history-item:hover {
-            background: #f3f4f6;
+        .analysis-history-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
         }
 
-        .history-item .date {
+        .analysis-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .analysis-info {
+            flex: 1;
+        }
+
+        .analysis-business-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+            line-height: 1.3;
+        }
+
+        .analysis-date {
+            font-size: 0.875rem;
             color: #6b7280;
-            font-size: 0.85rem;
+        }
+
+        .analysis-status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            border: 1px solid;
+            font-size: 0.875rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-icon {
+            width: 1rem;
+            height: 1rem;
+            flex-shrink: 0;
         }
 
         /* Warning Message */
@@ -867,6 +944,227 @@
             font-weight: 400;
         }
 
+        /* CashFlow Calm Header Card */
+        .cashflow-header-card {
+            background: linear-gradient(135deg, #e8f0f5 0%, #f5f8fa 100%);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .cashflow-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 2rem;
+        }
+
+        .cashflow-header-left {
+            flex: 1;
+        }
+
+        .cashflow-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #b2e5e8;
+            color: #0d7377;
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .cashflow-tag-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .cashflow-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 0.75rem 0;
+            line-height: 1.2;
+        }
+
+        .cashflow-description {
+            font-size: 1rem;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        .cashflow-header-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .cashflow-feature-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .cashflow-feature-btn:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+            transform: translateY(-1px);
+        }
+
+        .cashflow-btn-icon {
+            width: 1.125rem;
+            height: 1.125rem;
+            color: #14b8a6;
+        }
+
+        /* Section Title Headers */
+        .section-title-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .section-title-icon {
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title-icon svg {
+            width: 1.75rem;
+            height: 1.75rem;
+        }
+
+        .upload-icon {
+            background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+        }
+
+        .results-icon {
+            background: #3b82f6;
+        }
+
+        .section-title-content {
+            flex: 1;
+        }
+
+        .section-title-main {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 0.25rem 0;
+            line-height: 1.2;
+        }
+
+        .section-title-subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Form Inputs with Icons */
+        .form-label-with-icon {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        .form-label-icon {
+            width: 1.125rem;
+            height: 1.125rem;
+            color: #14b8a6;
+            flex-shrink: 0;
+        }
+
+        .required-asterisk {
+            color: #ef4444;
+            margin-left: 0.125rem;
+        }
+
+        .form-label-hint {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #6b7280;
+            margin-left: auto;
+        }
+
+        .form-input-with-icon {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-input-with-icon:focus {
+            outline: none;
+            border-color: #14b8a6;
+        }
+
+        /* Analyze Cash Flow Button */
+        .btn-analyze-cashflow {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.5rem;
+            background: #14b8a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 1rem;
+        }
+
+        .btn-analyze-cashflow:hover {
+            background: #0d9488;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+        }
+
+        .btn-analyze-cashflow:active {
+            transform: translateY(0);
+        }
+
+        .btn-icon-left,
+        .btn-icon-right {
+            width: 1.25rem;
+            height: 1.25rem;
+            flex-shrink: 0;
+        }
+
         .location-icon {
             width: 16px;
             height: 16px;
@@ -1011,7 +1309,8 @@
         }
 
         .logout-btn {
-            margin-left: auto;
+            position: absolute;
+            right: 0.75rem;
             padding: 0.5rem 1rem;
             background: #ef4444;
             color: white;
@@ -1239,11 +1538,38 @@
 
         <!-- CashFlow Calm Tab -->
         <div id="cashflow" class="tab-content">
-            <div class="section-header">
-                <div class="forecast-header">
-                    <h2 class="forecast-title">CashFlow Calm</h2>
-                    <div class="forecast-location">
-                        <span>Financial Early Warning</span>
+            <div class="cashflow-header-card">
+                <div class="cashflow-header-content">
+                    <div class="cashflow-header-left">
+                        <div class="cashflow-tag">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-tag-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                            </svg>
+                            <span>Financial Early Warning</span>
+                        </div>
+                        <h2 class="cashflow-title">CashFlow Calm</h2>
+                        <p class="cashflow-description">Stay ahead of cash flow problems with AI-powered analysis and runway projections for your business.</p>
+                    </div>
+                    <div class="cashflow-header-buttons">
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>Runway Projections</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                            <span>Risk Detection</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                            </svg>
+                            <span>AI Insights</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1251,7 +1577,17 @@
             <div class="module-container">
                 <!-- Left: Form -->
                 <div class="form-panel">
-                    <h3>Upload POS Data</h3>
+                    <div class="section-title-header">
+                        <div class="section-title-icon upload-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                        </div>
+                        <div class="section-title-content">
+                            <h3 class="section-title-main">Upload POS Data</h3>
+                            <p class="section-title-subtitle">Import your sales data for analysis</p>
+                        </div>
+                    </div>
 
                     <form id="cashflow-form">
                         <div class="form-group">
@@ -1266,47 +1602,93 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="business-name">Business Name (Optional)</label>
-                            <input type="text" id="business-name" placeholder="e.g., Cafe Luna">
+                            <label for="business-name" class="form-label-with-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 17.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                </svg>
+                                Business Name (Optional)
+                            </label>
+                            <input type="text" id="business-name" placeholder="e.g., Cafe Luna" class="form-input-with-icon">
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="monthly-rent">Monthly Rent ($) *</label>
-                                <input type="number" id="monthly-rent" placeholder="e.g., 4500" step="1" min="1" required>
+                                <label for="monthly-rent" class="form-label-with-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-3h6" />
+                                    </svg>
+                                    Monthly Rent <span class="required-asterisk">*</span>
+                                </label>
+                                <input type="number" id="monthly-rent" placeholder="e.g., 4500" step="1" min="1" required class="form-input-with-icon">
                             </div>
                             <div class="form-group">
-                                <label for="monthly-payroll">Monthly Payroll ($)</label>
-                                <input type="number" id="monthly-payroll" placeholder="e.g., 8000" step="1" min="0" value="0">
+                                <label for="monthly-payroll" class="form-label-with-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                                    </svg>
+                                    Monthly Payroll
+                                </label>
+                                <input type="number" id="monthly-payroll" placeholder="e.g., 8000" step="1" min="0" value="0" class="form-input-with-icon">
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="other-costs">Other Fixed Costs ($)</label>
-                                <input type="number" id="other-costs" placeholder="e.g., 1500" step="1" min="0" value="0">
+                                <label for="other-costs" class="form-label-with-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                                    </svg>
+                                    Other Fixed Costs
+                                </label>
+                                <input type="number" id="other-costs" placeholder="e.g., 1500" step="1" min="0" value="0" class="form-input-with-icon">
                             </div>
                             <div class="form-group">
-                                <label for="cash-on-hand">Cash on Hand ($)</label>
-                                <input type="number" id="cash-on-hand" placeholder="e.g., 25000" step="1" min="0">
+                                <label for="cash-on-hand" class="form-label-with-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
+                                    </svg>
+                                    Cash on Hand
+                                </label>
+                                <input type="number" id="cash-on-hand" placeholder="e.g., 25000" step="1" min="0" class="form-input-with-icon">
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="variable-cost-rate">Variable Cost Rate</label>
-                            <input type="number" id="variable-cost-rate" placeholder="e.g., 0.35" step="0.01" min="0" max="1" value="0">
-                            <small>COGS/fees as fraction of revenue (0-1)</small>
+                            <label for="variable-cost-rate" class="form-label-with-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="form-label-icon">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7.5h3.75a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25H9m3.75-9H9m0 0H5.25M9 7.5v9m0-9H5.25a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25H9" />
+                                </svg>
+                                Variable Cost Rate
+                                <span class="form-label-hint">COGS/fees as fraction (0-1)</span>
+                            </label>
+                            <input type="number" id="variable-cost-rate" placeholder="e.g., 0.35" step="0.01" min="0" max="1" value="0" class="form-input-with-icon">
                         </div>
 
-                        <button type="submit" class="btn btn-primary" id="analyze-btn">
+                        <button type="submit" class="btn-analyze-cashflow" id="analyze-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-icon-left">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
                             Analyze Cash Flow
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="btn-icon-right">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
                         </button>
                     </form>
                 </div>
 
                 <!-- Right: Results -->
                 <div class="results-panel">
-                    <h3>Analysis Results</h3>
+                    <div class="section-title-header">
+                        <div class="section-title-icon results-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
+                        </div>
+                        <div class="section-title-content">
+                            <h3 class="section-title-main">Analysis Results</h3>
+                            <p class="section-title-subtitle">Your financial health insights</p>
+                        </div>
+                    </div>
 
                     <div id="cashflow-empty" class="results-empty">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1321,7 +1703,12 @@
 
                     <!-- Previous Analyses -->
                     <div id="cashflow-history" class="history-section" style="display: none;">
-                        <h4>Previous Analyses</h4>
+                        <div class="history-section-header">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="history-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <h4>Previous Analyses</h4>
+                        </div>
                         <div id="analyses-list"></div>
                     </div>
                 </div>
@@ -2272,15 +2659,59 @@
                     return;
                 }
 
-                analysesList.innerHTML = analyses.map(a => `
-                    <div class="history-item" onclick="loadAnalysisDetails(${a.id})">
-                        <span>${a.business_name || 'Analysis'} #${a.id}</span>
-                        <span>
-                            <span class="risk-badge ${a.risk_state}">${a.risk_state}</span>
-                            <span class="date">${formatDateTime(a.created_at)}</span>
-                        </span>
-                    </div>
-                `).join('');
+                analysesList.innerHTML = analyses.map(a => {
+                    const riskState = a.risk_state.toLowerCase();
+                    const isCritical = riskState === 'critical';
+                    const isCaution = riskState === 'caution';
+                    const isHealthy = riskState === 'healthy';
+                    
+                    let cardClass = 'analysis-history-card';
+                    let dotColor = '#3b82f6';
+                    let statusIcon = '';
+                    let statusBg = '#dbeafe';
+                    let statusBorder = '#3b82f6';
+                    let statusText = 'Healthy';
+                    
+                    if (isCritical) {
+                        cardClass += ' critical-card';
+                        dotColor = '#ef4444';
+                        statusIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="status-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>';
+                        statusBg = '#fee2e2';
+                        statusBorder = '#ef4444';
+                        statusText = 'Critical';
+                    } else if (isCaution) {
+                        cardClass += ' caution-card';
+                        dotColor = '#f59e0b';
+                        statusIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="status-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+                        statusBg = '#fef3c7';
+                        statusBorder = '#f59e0b';
+                        statusText = 'Caution';
+                    } else {
+                        cardClass += ' healthy-card';
+                        statusIcon = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="status-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>';
+                        statusBg = '#dbeafe';
+                        statusBorder = '#3b82f6';
+                        statusText = 'Healthy';
+                    }
+                    
+                    return `
+                        <div class="${cardClass}" onclick="loadAnalysisDetails(${a.id})">
+                            <div class="analysis-history-content">
+                                <div class="analysis-history-left">
+                                    <div class="analysis-dot" style="background-color: ${dotColor}"></div>
+                                    <div class="analysis-info">
+                                        <div class="analysis-business-name">${a.business_name || 'Analysis'} #${a.id}</div>
+                                        <div class="analysis-date">${formatDateTime(a.created_at)}</div>
+                                    </div>
+                                </div>
+                                <div class="analysis-status-badge" style="background: ${statusBg}; border-color: ${statusBorder}; color: ${statusBorder};">
+                                    ${statusIcon}
+                                    <span>${statusText}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
 
                 historySection.style.display = 'block';
             } catch (err) {
