@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import logging
 import os
+import csv
 from typing import Optional, List
 
 from app.db.session import get_db
@@ -12,7 +13,6 @@ from app.schemas.shopline import (
 )
 
 from app.services.shopline_engine import (
-    load_business_catalog_from_csv,
     get_available_classifications,
     filter_businesses,
     recommend_businesses_via_gemini,
@@ -62,6 +62,30 @@ def _resolve_shopline_csv_path() -> str:
     return ""
 
 
+def _load_business_catalog_from_csv(csv_path: str) -> list[dict]:
+    """
+    Local CSV loader used to avoid ImportError during deploy.
+    Reads the CSV into a list[dict] with normalized keys.
+    """
+    rows: list[dict] = []
+    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            return rows
+
+        # Normalize fieldnames to lowercase for consistent access
+        field_map = {name: (name or "").strip().lower() for name in reader.fieldnames}
+
+        for raw in reader:
+            item: dict = {}
+            for original_key, value in raw.items():
+                norm_key = field_map.get(original_key, (original_key or "").strip().lower())
+                item[norm_key] = (value or "").strip()
+            rows.append(item)
+
+    return rows
+
+
 _BUSINESS_CATALOG_CACHE: Optional[list] = None
 
 
@@ -82,7 +106,7 @@ def _get_business_catalog() -> list:
         )
 
     try:
-        _BUSINESS_CATALOG_CACHE = load_business_catalog_from_csv(csv_path)
+        _BUSINESS_CATALOG_CACHE = _load_business_catalog_from_csv(csv_path)
         return _BUSINESS_CATALOG_CACHE
     except Exception as e:
         logger.error(f"Failed to load Shopline CSV catalog: {e}")
@@ -178,4 +202,3 @@ async def recommend_businesses(search_input: ShoplineSearchInput, db: Session = 
         results=results,
         total=len(results),
     )
-
