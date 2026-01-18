@@ -25,14 +25,26 @@ class FeaturedBusiness(BaseModel):
     category: str
     location: str
     score: float  # 0.0 to 100.0
-    blurb: str  # Gemini-generated description
+    blurb: str  # LLM-generated description
     highlights: List[str]  # Key features
 
 
+
 class ShoplineSearchInput(BaseModel):
-    """Input for business search"""
-    query: str = Field(..., description="Search query")
-    category: Optional[str] = Field(None, description="Filter by category")
+    """Input for business search.
+
+    UI can either:
+      - select one/many `classifications` (chip selections)
+      - and/or type a `query`
+
+    Legacy fields `category` and `location` are kept for compatibility.
+    """
+
+    query: Optional[str] = Field(None, description="Free-text search query (optional)")
+    classifications: List[str] = Field(default_factory=list, description="Selected classifications")
+
+    # Legacy/optional filters
+    category: Optional[str] = Field(None, description="Legacy: filter by category")
     location: Optional[str] = Field(None, description="Filter by location")
 
 
@@ -75,3 +87,4 @@ class ShoplineEventSearchResponse(BaseModel):
     results: List[ShoplineEvent]
     total: int
     generated_at: str
+
