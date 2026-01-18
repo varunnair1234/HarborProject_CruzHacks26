@@ -2214,27 +2214,24 @@
                 </div>
             </div>
 
-            <!-- Why Local Section - Moved to Top -->
-            <div style="margin-bottom: 3rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
-                <div></div>
-                <div class="why-local-card">
-                    <h3 class="why-local-title">WHY LOCAL?</h3>
-                    <p class="why-local-text">Supporting Santa Cruz businesses keeps our community thriving, preserves local character, and strengthens the coastal economy we all depend on.</p>
-                </div>
-            </div>
-
             <div id="shopline-loading" class="loading">Loading businesses</div>
             <div id="shopline-error" class="error" style="display: none;"></div>
 
             <div id="shopline-results" style="display: none;">
-                <div style="margin-bottom: 2rem;">
-                    <h2 style="font-size: 2rem; font-weight: 700; color: #0a4f6e; text-transform: uppercase; letter-spacing: -1px; transform: rotate(-0.5deg);">Discover Local</h2>
-                    <p style="color: #0a4f6e; font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 1rem;">Santa Cruz businesses that make our community thrive</p>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
-                        <div class="stat-card" style="padding: 1rem 1.5rem; display: inline-block; border-color: #2d5f3f;">
-                            <div class="stat-label" style="margin-bottom: 0.25rem;">Listed Businesses</div>
-                            <div class="stat-value" style="font-size: 2rem;" id="business-count">142</div>
+                <div style="margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                    <div>
+                        <h2 style="font-size: 2rem; font-weight: 700; color: #0a4f6e; text-transform: uppercase; letter-spacing: -1px; transform: rotate(-0.5deg);">Discover Local</h2>
+                        <p style="color: #0a4f6e; font-size: 1.1rem; margin-top: 0.5rem; margin-bottom: 1rem;">Santa Cruz businesses that make our community thrive</p>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
+                            <div class="stat-card" style="padding: 1rem 1.5rem; display: inline-block; border-color: #2d5f3f;">
+                                <div class="stat-label" style="margin-bottom: 0.25rem;">Listed Businesses</div>
+                                <div class="stat-value" style="font-size: 2rem;" id="business-count">142</div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="why-local-card">
+                        <h3 class="why-local-title">WHY LOCAL?</h3>
+                        <p class="why-local-text">Supporting Santa Cruz businesses keeps our community thriving, preserves local character, and strengthens the coastal economy we all depend on.</p>
                     </div>
                 </div>
                 <div id="search-results" class="business-grid"></div>
@@ -2268,6 +2265,14 @@
                     <div class="profile-field">
                         <div class="profile-label">Business Type</div>
                         <div class="profile-value" id="profile-business-type">N/A</div>
+                    </div>
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+                        <button onclick="handleLogout()" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #ff6b6b; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 18px; height: 18px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                            </svg>
+                            <span>Logout</span>
+                        </button>
                     </div>
                 </div>
             </div>
