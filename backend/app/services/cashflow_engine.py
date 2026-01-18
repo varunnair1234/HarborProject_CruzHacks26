@@ -92,14 +92,14 @@ class CashFlowEngine:
         )
         daily_fixed_costs = total_fixed_monthly / float(days_per_month)
 
-        # Burdens
-        fixed_cost_burden_revenue = (
-            total_fixed_monthly / avg_monthly_revenue if avg_monthly_revenue > 0 else float("inf")
+        # Burdens (use None instead of infinity for JSON serialization safety)
+        fixed_cost_burden_revenue: Optional[float] = (
+            total_fixed_monthly / avg_monthly_revenue if avg_monthly_revenue > 0 else None
         )
-        fixed_cost_burden_gross_profit = (
+        fixed_cost_burden_gross_profit: Optional[float] = (
             total_fixed_monthly / avg_monthly_gross_profit
             if avg_monthly_gross_profit > 0
-            else float("inf")
+            else None
         )
 
         # Backward compatible: keep fixed_cost_burden as burden-on-revenue
@@ -123,7 +123,12 @@ class CashFlowEngine:
 
         # Risk state assessment
         # Use gross-profit burden when variable_cost_rate > 0, otherwise revenue burden.
-        burden_for_risk = fixed_cost_burden_gross_profit if vcr > 0 else fixed_cost_burden_revenue
+        # Use infinity for risk assessment when burden is None (no revenue)
+        burden_for_risk = (
+            (fixed_cost_burden_gross_profit if fixed_cost_burden_gross_profit is not None else float("inf"))
+            if vcr > 0
+            else (fixed_cost_burden_revenue if fixed_cost_burden_revenue is not None else float("inf"))
+        )
 
         risk_state = CashFlowEngine._assess_risk_state(
             volatility=volatility,

@@ -171,15 +171,20 @@ Be honest but constructive. Focus on actionable advice."""
     @staticmethod
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def call_gemini(business_profile: Dict, ranking_context: Dict) -> Dict:
-        """Shopline featured business blurbs (JSON: blurb, highlights, score)"""
+        """Shopline featured business blurbs (JSON: blurb, highlights, score)
 
-        if not settings.google_api_key or not settings.google_api_key.strip():
-            logger.warning("GOOGLE_API_KEY not configured; using fallback for Gemini calls")
-            return {
-                "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
-                "highlights": ["Local favorite", "Quality service", "Community focused"],
-                "score": 75.0,
-            }
+        Uses OpenRouter API to access Gemini model for consistent API interface.
+        """
+        fallback_response = {
+            "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
+            "highlights": ["Local favorite", "Quality service", "Community focused"],
+            "score": 75.0,
+        }
+
+        # Check for OpenRouter API key (preferred method via OpenRouter)
+        if not settings.openrouter_api_key or not settings.openrouter_api_key.strip():
+            logger.warning("OPENROUTER_API_KEY not configured; using fallback for Gemini calls")
+            return fallback_response
 
         prompt = f"""Generate a compelling featured business description.
 
@@ -197,9 +202,8 @@ Create JSON with:
 
 Make it appealing but honest. Score should reflect local appeal, uniqueness, and quality."""
 
-        url = f"{LLMRouter.GEMINI_BASE_URL}/{settings.gemini_model}:generateContent?key={settings.google_api_key}"
-
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # Use OpenRouter API with Gemini model for consistent interface
             response = await client.post(
                 LLMRouter.OPENROUTER_BASE_URL,
                 headers={
@@ -207,13 +211,10 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
                     "Content-Type": "application/json",
                 },
                 json={
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.7,
-                        "maxOutputTokens": 500,
-                    }
+                    "model": settings.gemini_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 500,
                 }
             )
             try:
@@ -222,13 +223,26 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
                 # Log the exact status + body to diagnose auth/quota/model issues
                 status = e.response.status_code if e.response is not None else "unknown"
                 body = e.response.text if e.response is not None else ""
-                safe_url = url.split("?key=")[0]  # avoid leaking key
-                logger.error(f"Gemini HTTP error status={status} url={safe_url} body={body}")
+                logger.error(f"Gemini (via OpenRouter) HTTP error status={status} body={body[:200]}")
                 raise
 
             result = response.json()
-            content = result["candidates"][0]["content"]["parts"][0]["text"]
-            
+
+            # Validate response structure before accessing
+            if "choices" not in result or not result["choices"]:
+                logger.error(f"Invalid Gemini response structure: missing 'choices' key")
+                return fallback_response
+
+            first_choice = result["choices"][0]
+            if "message" not in first_choice or "content" not in first_choice.get("message", {}):
+                logger.error(f"Invalid Gemini response structure: missing 'message.content'")
+                return fallback_response
+
+            content = first_choice["message"]["content"]
+            if not content:
+                logger.error("Empty content in Gemini response")
+                return fallback_response
+
             try:
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0].strip()
@@ -240,8 +254,4 @@ Make it appealing but honest. Score should reflect local appeal, uniqueness, and
                 return parsed
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse Gemini response: {e}")
-                return {
-                    "blurb": f"Featured local business in {business_profile.get('category', 'general')}.",
-                    "highlights": ["Local favorite", "Quality service", "Community focused"],
-                    "score": 75.0,
-                }
+                return fallback_response

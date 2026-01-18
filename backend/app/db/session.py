@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 from typing import Generator
+import logging
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool, QueuePool
+from sqlalchemy.pool import StaticPool, NullPool
 
 from app.core.config import settings
 from app.db.models import Base
@@ -24,6 +25,8 @@ from app.db.models import (  # noqa: F401
     Business,
     BusinessProfile,
 )
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = (settings.database_url or "").strip()
 
@@ -60,25 +63,24 @@ def _make_engine(database_url: str) -> Engine:
         "prepare_threshold": 0,  # Disable prepared statements (0 = never prepare)
     }
 
-    # Use QueuePool with conservative settings for Supabase pooler
-    # Small pool size to avoid overwhelming PgBouncer, but still reuse connections
+    # Use NullPool for production (no connection reuse = no prepared statement collisions)
+    # This trades some performance for reliability on Supabase/Render
     return create_engine(
         normalized,
         connect_args=connect_args,
-        poolclass=QueuePool,
-        pool_size=3,  # Small pool for Supabase pooler compatibility
-        max_overflow=5,  # Allow some overflow connections
-        pool_pre_ping=True,  # Verify connections before using
-        pool_recycle=300,  # Recycle connections after 5 minutes
+        poolclass=NullPool,
+        pool_pre_ping=True,
         # SQLAlchemy: disable compiled statement cache
         execution_options={"compiled_cache": None},
+        # Use NullPool if using Supabase pooler to avoid double pooling
+        # But keep regular pool for now since it's working for some requests
     )
 
 
 engine: Engine = _make_engine(DATABASE_URL)
 
 # Debug: confirm the dialect is correct (should show postgresql+psycopg://)
-logger.info("DB URL (sanitized): %s", engine.url.render_as_string(hide_password=True))
+#logger.info("DB URL (sanitized): %s", engine.url.render_as_string(hide_password=True))
 
 
 @event.listens_for(engine, "connect")

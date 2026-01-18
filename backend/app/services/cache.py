@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 import json
@@ -8,6 +9,11 @@ from app.db.models import LLMOutput, ExternalCache
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class CacheError(Exception):
+    """Raised when cache operations fail"""
+    pass
 
 
 class CacheService:
@@ -51,40 +57,52 @@ class CacheService:
     ) -> None:
         """
         Cache LLM output with TTL
-        
+
         Args:
             db: Database session
             cache_key: Cache key
             model: Model name
             output: Output to cache
             ttl_hours: Time to live in hours (default from config)
+
+        Raises:
+            CacheError: If database operation fails
         """
         if ttl_hours is None:
             ttl_hours = settings.llm_cache_ttl_hours
-        
+
         expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
-        
-        # Check if exists
-        existing = db.query(LLMOutput).filter(LLMOutput.key == cache_key).first()
-        
-        if existing:
-            # Update existing
-            existing.output_json = json.dumps(output)
-            existing.ttl_expires_at = expires_at
-            existing.created_at = datetime.utcnow()
-            logger.info(f"Updated LLM cache for key: {cache_key[:16]}...")
-        else:
-            # Create new
-            cached = LLMOutput(
-                key=cache_key,
-                model=model,
-                output_json=json.dumps(output),
-                ttl_expires_at=expires_at
-            )
-            db.add(cached)
-            logger.info(f"Created LLM cache for key: {cache_key[:16]}...")
-        
-        db.commit()
+
+        try:
+            # Check if exists
+            existing = db.query(LLMOutput).filter(LLMOutput.key == cache_key).first()
+
+            if existing:
+                # Update existing
+                existing.output_json = json.dumps(output)
+                existing.ttl_expires_at = expires_at
+                existing.created_at = datetime.utcnow()
+                logger.info(f"Updated LLM cache for key: {cache_key[:16]}...")
+            else:
+                # Create new
+                cached = LLMOutput(
+                    key=cache_key,
+                    model=model,
+                    output_json=json.dumps(output),
+                    ttl_expires_at=expires_at
+                )
+                db.add(cached)
+                logger.info(f"Created LLM cache for key: {cache_key[:16]}...")
+
+            db.commit()
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Failed to cache LLM output for key {cache_key[:16]}...: {e}")
+            raise CacheError(f"Failed to cache LLM output: {e}") from e
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Unexpected error caching LLM output for key {cache_key[:16]}...: {e}")
+            raise CacheError(f"Unexpected cache error: {e}") from e
     
     @staticmethod
     def get_external_cache(
@@ -130,64 +148,88 @@ class CacheService:
     ) -> None:
         """
         Cache external API response with TTL
-        
+
         Args:
             db: Database session
             source: API source
             query_hash: Hash of query
             payload: Data to cache
             ttl_hours: Time to live (default from config)
+
+        Raises:
+            CacheError: If database operation fails
         """
         if ttl_hours is None:
             ttl_hours = settings.external_cache_ttl_hours
-        
+
         expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
-        
-        # Check if exists
-        existing = db.query(ExternalCache).filter(
-            ExternalCache.source == source,
-            ExternalCache.query_hash == query_hash
-        ).first()
-        
-        if existing:
-            existing.payload = json.dumps(payload)
-            existing.expires_at = expires_at
-            existing.created_at = datetime.utcnow()
-            logger.info(f"Updated external cache for {source}:{query_hash[:16]}...")
-        else:
-            cached = ExternalCache(
-                source=source,
-                query_hash=query_hash,
-                payload=json.dumps(payload),
-                expires_at=expires_at
-            )
-            db.add(cached)
-            logger.info(f"Created external cache for {source}:{query_hash[:16]}...")
-        
-        db.commit()
+
+        try:
+            # Check if exists
+            existing = db.query(ExternalCache).filter(
+                ExternalCache.source == source,
+                ExternalCache.query_hash == query_hash
+            ).first()
+
+            if existing:
+                existing.payload = json.dumps(payload)
+                existing.expires_at = expires_at
+                existing.created_at = datetime.utcnow()
+                logger.info(f"Updated external cache for {source}:{query_hash[:16]}...")
+            else:
+                cached = ExternalCache(
+                    source=source,
+                    query_hash=query_hash,
+                    payload=json.dumps(payload),
+                    expires_at=expires_at
+                )
+                db.add(cached)
+                logger.info(f"Created external cache for {source}:{query_hash[:16]}...")
+
+            db.commit()
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Failed to cache external data for {source}:{query_hash[:16]}...: {e}")
+            raise CacheError(f"Failed to cache external data: {e}") from e
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Unexpected error caching external data for {source}:{query_hash[:16]}...: {e}")
+            raise CacheError(f"Unexpected cache error: {e}") from e
     
     @staticmethod
     def cleanup_expired(db: Session) -> int:
         """
         Remove expired cache entries
-        
+
         Returns:
             Number of entries deleted
+
+        Raises:
+            CacheError: If database operation fails
         """
         now = datetime.utcnow()
-        
-        llm_deleted = db.query(LLMOutput).filter(
-            LLMOutput.ttl_expires_at <= now
-        ).delete()
-        
-        external_deleted = db.query(ExternalCache).filter(
-            ExternalCache.expires_at <= now
-        ).delete()
-        
-        db.commit()
-        
-        total = llm_deleted + external_deleted
-        if total > 0:
-            logger.info(f"Cleaned up {total} expired cache entries")
-        
-        return total
+
+        try:
+            llm_deleted = db.query(LLMOutput).filter(
+                LLMOutput.ttl_expires_at <= now
+            ).delete()
+
+            external_deleted = db.query(ExternalCache).filter(
+                ExternalCache.expires_at <= now
+            ).delete()
+
+            db.commit()
+
+            total = llm_deleted + external_deleted
+            if total > 0:
+                logger.info(f"Cleaned up {total} expired cache entries")
+
+            return total
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Failed to cleanup expired cache entries: {e}")
+            raise CacheError(f"Failed to cleanup cache: {e}") from e
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Unexpected error cleaning up cache: {e}")
+            raise CacheError(f"Unexpected cache cleanup error: {e}") from e

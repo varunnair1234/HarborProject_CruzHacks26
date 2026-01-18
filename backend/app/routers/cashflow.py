@@ -210,17 +210,17 @@ async def get_analysis(
 ):
     """
     Get detailed analysis by ID for the authenticated business
-    
+
     Returns full analysis with metrics and revenue data
     """
     analysis = db.query(Analysis).filter(
         Analysis.id == analysis_id,
         Analysis.business_id == current_business.id
     ).first()
-    
+
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    
+
     # Get daily revenue
     daily_revenues = (
         db.query(DailyRevenue)
@@ -228,21 +228,27 @@ async def get_analysis(
         .order_by(DailyRevenue.date)
         .all()
     )
-    
-    # Get fixed costs
+
+    # Get fixed costs with null safety check
     fixed_costs = analysis.fixed_costs
-    
-    # Rebuild metrics
+    if fixed_costs is None:
+        logger.error(f"Analysis {analysis_id} has no associated fixed costs record")
+        raise HTTPException(
+            status_code=500,
+            detail="Analysis data is incomplete: missing fixed costs record"
+        )
+
+    # Rebuild metrics with defensive defaults for any null fields
     revenue_list = [{"date": dr.date, "revenue": dr.revenue} for dr in daily_revenues]
     fixed_costs_dict = {
-        "rent": fixed_costs.rent,
-        "payroll": fixed_costs.payroll,
-        "other": fixed_costs.other,
-        "cash_on_hand": fixed_costs.cash_on_hand
+        "rent": float(fixed_costs.rent) if fixed_costs.rent is not None else 0.0,
+        "payroll": float(fixed_costs.payroll) if fixed_costs.payroll is not None else 0.0,
+        "other": float(fixed_costs.other) if fixed_costs.other is not None else 0.0,
+        "cash_on_hand": float(fixed_costs.cash_on_hand) if fixed_costs.cash_on_hand is not None else None
     }
-    
+
     metrics = CashFlowEngine.compute_metrics(revenue_list, fixed_costs_dict, variable_cost_rate=0.0)
-    
+
     return {
         "analysis_id": analysis.id,
         "created_at": analysis.created_at.isoformat(),

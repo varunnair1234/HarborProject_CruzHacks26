@@ -134,9 +134,14 @@ class RentEngine:
         new_runway: Optional[float],
         trend_30d: float,
     ) -> str:
-        """Assess risk state with new rent (uses same thresholds as CashFlowEngine)."""
+        """Assess risk state with new rent (uses same thresholds as CashFlowEngine).
+
+        Note: When new_burden is None (no revenue), we treat it as infinite burden
+        for risk assessment purposes, which will result in 'critical' state.
+        """
         from app.services.cashflow_engine import CashFlowEngine
 
+        # None burden means no revenue - treat as infinite for risk assessment
         burden_value = new_burden if new_burden is not None else float("inf")
 
         if new_runway is not None and new_runway < CashFlowEngine.RUNWAY_CRITICAL_DAYS:
