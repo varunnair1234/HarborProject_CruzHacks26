@@ -18,10 +18,7 @@
             font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            background: radial-gradient(circle at 20% 50%, rgba(10, 79, 110, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 40% 20%, rgba(45, 95, 63, 0.1) 0%, transparent 50%),
-                        #e8d5b7;
+            background: #EFE7DB;
             min-height: 100vh;
             padding: 0;
             position: relative;
@@ -1174,6 +1171,31 @@
             color: #0A4D68;
         }
 
+        /* Why Local Card */
+        .why-local-card {
+            background: #F9F7F4;
+            border: 2px solid #2d5f3f;
+            border-radius: 8px 8px 0 0;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .why-local-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2d5f3f;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .why-local-text {
+            font-size: 1rem;
+            color: #374151;
+            line-height: 1.6;
+            margin: 0;
+        }
+
         .highlights-list {
             margin-top: 0.75rem;
             padding-left: 1rem;
@@ -1775,6 +1797,14 @@
         <div id="main-app" style="display: none;">
             <!-- Tabs -->
             <div class="tabs">
+                <button class="tab-button active" data-tab="shopline">
+                    <span class="tab-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                    </span>
+                    Shopline
+                </button>
                 <button class="tab-button" data-tab="touristpulse" style="display: none;">
                     <span class="tab-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
@@ -1798,14 +1828,6 @@
                         </svg>
                     </span>
                     RentGuard
-                </button>
-                <button class="tab-button active" data-tab="shopline">
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                        </svg>
-                    </span>
-                    Shopline
                 </button>
                 <button class="tab-button" data-tab="profile" style="display: none;">
                     <span class="tab-icon">
@@ -2165,6 +2187,15 @@
                     </div>
                 </div>
                 <div id="search-results" class="business-grid"></div>
+                
+                <!-- Why Local Section -->
+                <div style="margin-top: 4rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                    <div></div>
+                    <div class="why-local-card">
+                        <h3 class="why-local-title">WHY LOCAL?</h3>
+                        <p class="why-local-text">Supporting Santa Cruz businesses keeps our community thriving, preserves local character, and strengthens the coastal economy we all depend on.</p>
+                    </div>
+                </div>
             </div>
         </div>
 
