@@ -896,10 +896,100 @@
             background: #083d54;
         }
 
+        /* Boardwalk Hero Image Section */
+        .boardwalk-hero {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            min-height: 600px;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .boardwalk-hero-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            z-index: 1;
+            transition: transform 0.1s ease-out, opacity 0.3s ease-out;
+        }
+
+        .boardwalk-hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
+            z-index: 2;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .boardwalk-hero-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 3;
+            width: 100%;
+            padding: 0 2rem;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+
+        .boardwalk-hero-title {
+            font-size: 8rem;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: -3px;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .boardwalk-hero-subtitle {
+            font-size: 1.5rem;
+            color: white;
+            font-weight: 400;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+            letter-spacing: 2px;
+        }
+
+        /* Scroll transition wrapper */
+        .shopline-scroll-wrapper {
+            position: relative;
+        }
+
+        .shopline-content {
+            position: relative;
+            background: #EFE7DB;
+            margin-top: -100vh;
+            padding-top: 100vh;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .shopline-content.visible {
+            opacity: 1;
+        }
+
         /* Shopline Hero Section */
         .shopline-hero {
             margin-bottom: 4rem;
             position: relative;
+            opacity: 0;
+            transition: opacity 0.5s ease-in;
+        }
+
+        .shopline-hero.visible {
+            opacity: 1;
         }
 
         .hero-header {
@@ -2116,7 +2206,21 @@
 
         <!-- Shopline Tab -->
         <div id="shopline" class="tab-content active">
-            <div class="shopline-hero" id="shopline-hero">
+            <!-- Boardwalk Hero Image Section -->
+            <!-- Replace the src below with your boardwalk image URL or local path -->
+            <div class="boardwalk-hero" id="boardwalk-hero">
+                <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80" alt="Santa Cruz Boardwalk" class="boardwalk-hero-image" id="boardwalk-image">
+                <div class="boardwalk-hero-overlay" id="boardwalk-overlay"></div>
+                <div class="boardwalk-hero-content" id="boardwalk-content">
+                    <h1 class="boardwalk-hero-title">Harbor</h1>
+                    <p class="boardwalk-hero-subtitle">The operating system for small businesses in Santa Cruz</p>
+                </div>
+            </div>
+
+            <!-- Shopline Content Wrapper -->
+            <div class="shopline-scroll-wrapper">
+                <div class="shopline-content">
+                    <div class="shopline-hero" id="shopline-hero">
                 <div class="hero-header">
                     <div class="hero-title-section">
                         <h1>Harbor</h1>
@@ -2179,6 +2283,9 @@
                     </div>
                 </div>
                 <div id="search-results" class="business-grid"></div>
+            </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2346,6 +2453,72 @@
             }
         }
 
+        // Boardwalk hero scroll transition
+        function initBoardwalkScroll() {
+            const boardwalkHero = document.getElementById('boardwalk-hero');
+            const boardwalkImage = document.getElementById('boardwalk-image');
+            const boardwalkOverlay = document.getElementById('boardwalk-overlay');
+            const boardwalkContent = document.getElementById('boardwalk-content');
+            const shoplineHero = document.getElementById('shopline-hero');
+            const shoplineContent = document.querySelector('.shopline-content');
+            
+            if (!boardwalkHero || !shoplineHero) return;
+
+            function handleScroll() {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const heroHeight = boardwalkHero.offsetHeight;
+                const scrollProgress = Math.min(scrollTop / heroHeight, 1);
+
+                // Parallax effect on image
+                if (boardwalkImage) {
+                    const parallaxOffset = scrollTop * 0.5;
+                    boardwalkImage.style.transform = `translateY(${parallaxOffset}px) scale(1.1)`;
+                }
+
+                // Fade out overlay and content
+                if (boardwalkOverlay) {
+                    boardwalkOverlay.style.opacity = 1 - scrollProgress;
+                }
+                if (boardwalkContent) {
+                    boardwalkContent.style.opacity = 1 - scrollProgress;
+                    boardwalkContent.style.transform = `translate(-50%, calc(-50% + ${scrollProgress * 50}px))`;
+                }
+
+                // Fade in shopline content
+                if (shoplineHero && scrollProgress > 0.3) {
+                    shoplineHero.classList.add('visible');
+                } else if (shoplineHero) {
+                    shoplineHero.classList.remove('visible');
+                }
+
+                // Fade in shopline content wrapper
+                if (shoplineContent) {
+                    const contentOpacity = Math.min(scrollProgress * 1.5, 1);
+                    shoplineContent.style.opacity = contentOpacity;
+                    if (contentOpacity > 0.5) {
+                        shoplineContent.classList.add('visible');
+                    } else {
+                        shoplineContent.classList.remove('visible');
+                    }
+                }
+            }
+
+            // Throttle scroll events for performance
+            let ticking = false;
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        handleScroll();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+
+            // Initial call
+            handleScroll();
+        }
+
         // Check auth on page load
         function checkAuth() {
             if (isAuthenticated()) {
@@ -2370,6 +2543,9 @@
                 // Initialize login form when auth container is shown
                 setTimeout(initLoginForm, 100);
             }
+            
+            // Initialize boardwalk scroll transition
+            setTimeout(initBoardwalkScroll, 100);
         }
 
         // Auth form switching
@@ -2583,6 +2759,10 @@
                 loadPreviousAnalyses();
             } else if (tabName === 'shopline') {
                 loadAllBusinesses();
+                // Reset scroll to show boardwalk hero
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Reinitialize scroll handler
+                setTimeout(initBoardwalkScroll, 100);
             } else if (tabName === 'touristpulse') {
                 loadTouristOutlook();
             } else if (tabName === 'profile') {
