@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from collections import defaultdict
+import pytz
 import logging
 import httpx
 import json
@@ -91,8 +92,10 @@ async def fetch_weather_data_nws(lat: float, lon: float) -> dict:
 
 def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
     """Convert NWS forecast periods into daily summaries."""
-    today = date.today()
-    logger.info("Filtering forecast: today is %s, requesting %d days", today, days)
+    # Use Pacific Time to determine "today" (Santa Cruz timezone)
+    pacific_tz = pytz.timezone('America/Los_Angeles')
+    today = datetime.now(pacific_tz).date()
+    logger.info("Filtering forecast: today is %s (Pacific Time), requesting %d days", today, days)
     
     grouped = defaultdict(list)
     for p in periods:
@@ -116,11 +119,12 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
             logger.debug("Filtered out past date: %s (today is %s)", period_date, today)
 
     daily: List[dict] = []
-    # Sort dates and take only future dates starting from today, limit to requested days
-    sorted_dates = sorted([d for d in grouped.keys() if d >= today])[:days]
-    logger.info("After filtering: %d dates from %s to %s", len(sorted_dates), sorted_dates[0] if sorted_dates else "none", sorted_dates[-1] if sorted_dates else "none")
+    # Generate exactly 'days' consecutive dates starting from today
+    # This ensures we always return the requested number of days, even if some don't have weather data
+    sorted_dates = [today + timedelta(days=i) for i in range(days)]
+    logger.info("Generated %d consecutive dates from %s to %s", len(sorted_dates), sorted_dates[0], sorted_dates[-1])
     for d in sorted_dates:
-        ps = grouped[d]
+        ps = grouped.get(d, [])  # Get periods for this date, or empty list if none
 
         temps = [p.get("temperature") for p in ps if isinstance(p.get("temperature"), (int, float))]
         max_temp = max(temps) if temps else None
@@ -133,8 +137,12 @@ def nws_periods_to_daily(periods: List[dict], days: int) -> List[dict]:
                 pops.append(float(pop))
         max_pop = max(pops) if pops else 0.0
 
-        rep = next((p for p in ps if p.get("isDaytime") is True), None) or ps[0]
-        condition = rep.get("shortForecast") or rep.get("detailedForecast") or "Unknown"
+        if ps:
+            rep = next((p for p in ps if p.get("isDaytime") is True), None) or ps[0]
+            condition = rep.get("shortForecast") or rep.get("detailedForecast") or "Unknown"
+        else:
+            # If no periods for this date, use default
+            condition = "Data unavailable"
 
         daily.append(
             {
@@ -565,7 +573,9 @@ async def get_tourist_outlook(
         # Debug: log forecast dates
         forecast_dates = [item["date"] for item in daily_forecast]
         logger.info("Forecast dates being processed: %s", [str(d) for d in forecast_dates])
-        logger.info("Today is: %s", date.today())
+        pacific_tz = pytz.timezone('America/Los_Angeles')
+        today_pacific = datetime.now(pacific_tz).date()
+        logger.info("Today is: %s (Pacific Time)", today_pacific)
 
         # Debug: log all loaded events and their dates
         logger.info("Total events loaded: %d", len(events))
