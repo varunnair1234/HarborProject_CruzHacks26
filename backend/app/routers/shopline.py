@@ -6,6 +6,7 @@ import csv
 from typing import Optional, List
 
 from app.db.session import get_db
+from app.db.models import Business
 from app.schemas.shopline import (
     ShoplineSearchInput,
     ShoplineSearchResponse,
@@ -50,25 +51,70 @@ def _load_business_catalog_from_csv(csv_path: str) -> list:
         return []
 
 
-def _get_business_catalog() -> list:
+def _load_businesses_from_database(db: Session) -> list:
+    """Load businesses from database and format for Shopline."""
+    try:
+        businesses = db.query(Business).filter(Business.is_active == True).all()
+        result = []
+        for business in businesses:
+            result.append({
+                "name": business.business_name,
+                "location": business.address,
+                "classification": business.business_type,
+            })
+        logger.info(f"Loaded {len(result)} businesses from database")
+        return result
+    except Exception as e:
+        logger.error(f"Failed to load businesses from database: {e}")
+        return []
+
+
+def _get_business_catalog(db: Session, force_refresh: bool = False) -> list:
+    """Get combined business catalog from CSV and database."""
     global _BUSINESS_CATALOG_CACHE
 
-    if _BUSINESS_CATALOG_CACHE is not None:
+    if _BUSINESS_CATALOG_CACHE is not None and not force_refresh:
         return _BUSINESS_CATALOG_CACHE
 
-    if not os.path.exists(CSV_FILE_PATH):
+    businesses = []
+    
+    # Load from CSV (seed data)
+    if os.path.exists(CSV_FILE_PATH):
+        try:
+            csv_businesses = _load_business_catalog_from_csv(CSV_FILE_PATH)
+            businesses.extend(csv_businesses)
+            logger.info(f"Loaded {len(csv_businesses)} businesses from CSV")
+        except Exception as e:
+            logger.warning(f"Failed to load CSV: {e}")
+    else:
+        logger.warning(f"CSV file not found at {CSV_FILE_PATH}, continuing with database only")
+    
+    # Load from database (new signups)
+    try:
+        db_businesses = _load_businesses_from_database(db)
+        businesses.extend(db_businesses)
+        logger.info(f"Loaded {len(db_businesses)} businesses from database")
+    except Exception as e:
+        logger.warning(f"Failed to load from database: {e}")
+    
+    if not businesses:
         raise HTTPException(
             status_code=500,
-            detail=f"Shopline CSV not found at {CSV_FILE_PATH}",
+            detail="No businesses found in CSV or database"
         )
-
-    try:
-        _BUSINESS_CATALOG_CACHE = _load_business_catalog_from_csv(CSV_FILE_PATH)
-        logger.info(f"Loaded Shopline catalog from {CSV_FILE_PATH}")
-        return _BUSINESS_CATALOG_CACHE
-    except Exception as e:
-        logger.error(f"Failed to load Shopline CSV catalog: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load Shopline business catalog")
+    
+    # Remove duplicates (by name, case-insensitive)
+    seen = set()
+    unique_businesses = []
+    for business in businesses:
+        name_lower = business.get("name", "").strip().lower()
+        if name_lower and name_lower not in seen:
+            seen.add(name_lower)
+            unique_businesses.append(business)
+    
+    logger.info(f"Total unique businesses: {len(unique_businesses)}")
+    _BUSINESS_CATALOG_CACHE = unique_businesses
+    return _BUSINESS_CATALOG_CACHE
 
 
 def _business_to_profile(b: dict) -> BusinessProfile:
@@ -88,16 +134,16 @@ def _business_to_profile(b: dict) -> BusinessProfile:
 
 
 @router.get("/classifications")
-def list_classifications():
+def list_classifications(db: Session = Depends(get_db)):
     """Return unique business classifications for UI chips/dropdown."""
-    businesses = _get_business_catalog()
+    businesses = _get_business_catalog(db)
     return {"classifications": get_available_classifications(businesses)}
 
 
 @router.get("/all")
-def get_all_businesses():
+def get_all_businesses(db: Session = Depends(get_db)):
     """Return all businesses from the catalog."""
-    businesses = _get_business_catalog()
+    businesses = _get_business_catalog(db)
     results = [_business_to_profile(b) for b in businesses]
     results.sort(key=lambda x: (x.name or "").lower())
     return {
@@ -116,7 +162,7 @@ async def search_businesses(search_input: ShoplineSearchInput, db: Session = Dep
 
     This endpoint returns deterministic (alphabetical) results.
     """
-    businesses = _get_business_catalog()
+    businesses = _get_business_catalog(db)
 
     classifications = search_input.classifications or []
 
@@ -144,7 +190,7 @@ async def search_businesses(search_input: ShoplineSearchInput, db: Session = Dep
 @router.post("/recommend", response_model=ShoplineSearchResponse)
 async def recommend_businesses(search_input: ShoplineSearchInput, db: Session = Depends(get_db)):
     """Recommend businesses based on selected classifications and/or free-text query."""
-    businesses = _get_business_catalog()
+    businesses = _get_business_catalog(db)
 
     classifications = search_input.classifications or []
 
