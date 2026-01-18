@@ -34,6 +34,48 @@ def _norm_lower(s: Any) -> str:
     return _norm(s).lower()
 
 
+# Common synonym/normalization map to make search friendlier.
+# Keep this intentionally small and local for hackathon use.
+_QUERY_SYNONYMS = {
+    "bookstore": "book",
+    "book store": "book",
+    "coffee shop": "coffee",
+    "cafe": "coffee",
+    "café": "coffee",
+    "restaurant": "food",
+    "restaurants": "food",
+}
+
+
+from typing import List  # already imported, but for clarity in this context
+
+def _normalize_query(q: str) -> List[str]:
+    """Normalize a free-text query into tokens with a few light synonyms."""
+    ql = (q or "").strip().lower()
+    if not ql:
+        return []
+
+    # Apply phrase-level synonyms first
+    for k, v in _QUERY_SYNONYMS.items():
+        if k in ql:
+            ql = ql.replace(k, v)
+
+    # Split on whitespace and punctuation-ish characters
+    tokens = []
+    for part in ql.replace("/", " ").replace("-", " ").replace("&", " ").split():
+        t = part.strip()
+        if not t:
+            continue
+        # light stemming for plural 's'
+        if len(t) > 3 and t.endswith("s"):
+            t = t[:-1]
+        tokens.append(t)
+
+    # de-dupe while preserving order
+    seen = set()
+    return [t for t in tokens if not (t in seen or seen.add(t))]
+
+
 def load_business_catalog_from_csv(csv_path: str) -> List[Dict[str, Any]]:
     """Load businesses from CSV.
 
@@ -56,7 +98,12 @@ def load_business_catalog_from_csv(csv_path: str) -> List[Dict[str, Any]]:
         if reader.fieldnames is None:
             return out
 
-        field_map = {h: _norm_lower(h) for h in reader.fieldnames}
+        # Normalize headers (handles UTF-8 BOM and stray whitespace)
+        def _clean_header(h: Any) -> str:
+            # Some CSVs include a UTF-8 BOM on the first header
+            return _norm_lower(str(h).lstrip("\ufeff"))
+
+        field_map = {h: _clean_header(h) for h in reader.fieldnames}
 
         def get_any(r: Dict[str, Any], keys: List[str]) -> str:
             for k in keys:
@@ -78,7 +125,11 @@ def load_business_catalog_from_csv(csv_path: str) -> List[Dict[str, Any]]:
 
             # categories: explicit column, else derive a basic category from classification
             raw_categories = get_any(r, ["categories"])  # comma-separated
-            categories = [c.strip().lower() for c in str(raw_categories).split(",") if c.strip()] if raw_categories else []
+            categories = (
+                [c.strip().lower() for c in str(raw_categories).split(",") if c.strip()]
+                if raw_categories
+                else []
+            )
 
             if classification:
                 categories.append(classification.strip().lower())
@@ -130,7 +181,7 @@ def filter_businesses(
 ) -> List[Dict[str, Any]]:
     """Filter businesses by selected classifications and/or free-text query."""
     selected = [s.strip() for s in (classifications or []) if str(s).strip()]
-    q = (query or "").strip().lower()
+    q_tokens = _normalize_query(query or "")
 
     out: List[Dict[str, Any]] = []
     for b in businesses:
@@ -138,7 +189,7 @@ def filter_businesses(
             if not any(_matches_classification(b, s) for s in selected):
                 continue
 
-        if q:
+        if q_tokens:
             hay = " ".join(
                 [
                     _norm_lower(b.get("name")),
@@ -147,7 +198,10 @@ def filter_businesses(
                     _norm_lower(b.get("description")),
                 ]
             )
-            if q not in hay:
+
+            # Require ALL tokens to appear somewhere in the combined text.
+            # This makes queries like "bookstore" -> ["book"] match "Bookshop Santa Cruz".
+            if any(t not in hay for t in q_tokens):
                 continue
 
         out.append(b)
@@ -207,9 +261,7 @@ def recommend_businesses_via_gemini(
         "instructions": "Return JSON only. ranked_names must be a list of names from the provided businesses.",
     }
 
-    prompt = (
-        "Return JSON only.\n\n" + json.dumps(prompt_payload, ensure_ascii=False)
-    )
+    prompt = "Return JSON only.\n\n" + json.dumps(prompt_payload, ensure_ascii=False)
 
     try:
         # NOTE: Uses shared API key; Gemini 1.5 is routed behind call_deepseek in this repo
