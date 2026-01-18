@@ -23,70 +23,26 @@ router = APIRouter(prefix="/shopline", tags=["shopline"])
 
 
 # CSV-backed business catalog (hackathon-ready)
-# Set SHOPLINE_CSV_PATH to point to your CSV file.
-# Expected columns (case-insensitive):
-#   name, location, classification, description, categories
-SHOPLINE_CSV_PATH = os.getenv("SHOPLINE_CSV_PATH", "")
-
-
-def _resolve_shopline_csv_path() -> str:
-    """Resolve a usable CSV path."""
-    candidates = []
-    if SHOPLINE_CSV_PATH:
-        candidates.append(SHOPLINE_CSV_PATH)
-
-    # backend/app/data
-    candidates.append(
-        os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", "data", "shopline_businesses_datafile.csv")
-        )
-    )
-
-    # backend/path (user-provided location)
-    candidates.append(
-        os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", "..", "path", "shopline_businesses_datafile.csv")
-        )
-    )
-
-    # project working dir
-    candidates.append(os.path.normpath(os.path.join(os.getcwd(), "shopline_businesses_datafile.csv")))
-
-    # container/dev convenience
-    candidates.append("/mnt/data/shopline_businesses_datafile.csv")
-    candidates.append("/mnt/data/shopline_businesses_sample_3_per_letter.csv")
-
-    for p in candidates:
-        if p and os.path.exists(p):
-            return p
-    return ""
-
-
-def _load_business_catalog_from_csv(csv_path: str) -> list[dict]:
-    """
-    Local CSV loader used to avoid ImportError during deploy.
-    Reads the CSV into a list[dict] with normalized keys.
-    """
-    rows: list[dict] = []
-    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        if not reader.fieldnames:
-            return rows
-
-        # Normalize fieldnames to lowercase for consistent access
-        field_map = {name: (name or "").strip().lower() for name in reader.fieldnames}
-
-        for raw in reader:
-            item: dict = {}
-            for original_key, value in raw.items():
-                norm_key = field_map.get(original_key, (original_key or "").strip().lower())
-                item[norm_key] = (value or "").strip()
-            rows.append(item)
-
-    return rows
-
+# Direct path to CSV file
+CSV_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "shopline_businesses_datafile.csv")
 
 _BUSINESS_CATALOG_CACHE: Optional[list] = None
+
+
+def _load_business_catalog_from_csv(csv_path: str) -> list:
+    """Load and parse the Shopline business CSV file."""
+    rows = []
+    try:
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("name"):
+                    rows.append(row)
+        logger.info(f"Loaded {len(rows)} businesses from {csv_path}")
+        return rows
+    except Exception as e:
+        logger.error(f"Failed to parse CSV: {e}")
+        return []
 
 
 def _get_business_catalog() -> list:
@@ -95,18 +51,15 @@ def _get_business_catalog() -> list:
     if _BUSINESS_CATALOG_CACHE is not None:
         return _BUSINESS_CATALOG_CACHE
 
-    csv_path = _resolve_shopline_csv_path()
-    if not csv_path:
+    if not os.path.exists(CSV_FILE_PATH):
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Shopline CSV not found. Set SHOPLINE_CSV_PATH or place "
-                "shopline_businesses_datafile.csv in backend/app/data/."
-            ),
+            detail=f"Shopline CSV not found at {CSV_FILE_PATH}",
         )
 
     try:
-        _BUSINESS_CATALOG_CACHE = _load_business_catalog_from_csv(csv_path)
+        _BUSINESS_CATALOG_CACHE = _load_business_catalog_from_csv(CSV_FILE_PATH)
+        logger.info(f"Loaded Shopline catalog from {CSV_FILE_PATH}")
         return _BUSINESS_CATALOG_CACHE
     except Exception as e:
         logger.error(f"Failed to load Shopline CSV catalog: {e}")
