@@ -1841,23 +1841,39 @@
 
         <!-- TouristPulse Tab -->
         <div id="touristpulse" class="tab-content">
-            <div class="section-header">
-                <div class="forecast-header">
-                    <h2 class="forecast-title">7-Day Tourism Forecast</h2>
-                    <div class="forecast-location">
-                        <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                        </svg>
-                        <span>Santa Cruz, California</span>
+            <div class="cashflow-header-card">
+                <div class="cashflow-header-content">
+                    <div class="cashflow-header-left">
+                        <div class="cashflow-tag">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-tag-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                            </svg>
+                            <span>Tourism Intelligence</span>
+                        </div>
+                        <h2 class="cashflow-title">TouristPulse</h2>
+                        <p class="cashflow-description">Get AI-powered 7-day tourism forecasts for Santa Cruz to plan your business operations and staffing.</p>
+                    </div>
+                    <div class="cashflow-header-buttons">
+                        <button class="cashflow-feature-btn" onclick="loadTouristOutlook()" id="refresh-tourist-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.25 16.5h7.5m-7.5 0h-5.25m5.25 0v-1.125c0-1.645.933-3.063 2.25-3.75m0 0c.866-.5 1.875-.75 2.875-.75h3.75m-3.75 0a9 9 0 01-2.25-3.75m0 0c.866-.5 1.875-.75 2.875-.75h3.75m-3.75 0a9 9 0 00-2.25 3.75m0 0h-4.992v.001M21.75 7.5h-4.992v-.001" />
+                            </svg>
+                            <span>7-Day Forecast</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+                            </svg>
+                            <span>Weather Analysis</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                            </svg>
+                            <span>Event Insights</span>
+                        </button>
                     </div>
                 </div>
-                <button class="refresh-btn" onclick="loadTouristOutlook()" id="refresh-tourist-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="refresh-icon">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.25 16.5h7.5m-7.5 0h-5.25m5.25 0v-1.125c0-1.645.933-3.063 2.25-3.75m0 0c.866-.5 1.875-.75 2.875-.75h3.75m-3.75 0a9 9 0 01-2.25-3.75m0 0c.866-.5 1.875-.75 2.875-.75h3.75m-3.75 0a9 9 0 00-2.25 3.75m0 0h-4.992v.001M21.75 7.5h-4.992v-.001" />
-                    </svg>
-                    Refresh
-                </button>
             </div>
             <div id="tourist-loading" class="loading">Loading tourism predictions</div>
             <div id="tourist-error" class="error" style="display: none;"></div>
@@ -2050,11 +2066,37 @@
 
         <!-- RentGuard Tab -->
         <div id="rentguard" class="tab-content">
-            <div class="section-header">
-                <div class="forecast-header">
-                    <h2 class="forecast-title">RentGuard</h2>
-                    <div class="forecast-location">
-                        <span>Rent Impact Simulator</span>
+            <div class="cashflow-header-card">
+                <div class="cashflow-header-content">
+                    <div class="cashflow-header-left">
+                        <div class="cashflow-tag">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-tag-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                            </svg>
+                            <span>Rent Protection</span>
+                        </div>
+                        <h2 class="cashflow-title">RentGuard</h2>
+                        <p class="cashflow-description">Simulate rent increase impacts on your cash flow and make informed decisions about lease negotiations.</p>
+                    </div>
+                    <div class="cashflow-header-buttons">
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+                            </svg>
+                            <span>Impact Analysis</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h5.25c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                            </svg>
+                            <span>Scenario Planning</span>
+                        </button>
+                        <button class="cashflow-feature-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="cashflow-btn-icon">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                            </svg>
+                            <span>Risk Assessment</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -2172,6 +2214,15 @@
                 </div>
             </div>
 
+            <!-- Why Local Section - Moved to Top -->
+            <div style="margin-bottom: 3rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                <div></div>
+                <div class="why-local-card">
+                    <h3 class="why-local-title">WHY LOCAL?</h3>
+                    <p class="why-local-text">Supporting Santa Cruz businesses keeps our community thriving, preserves local character, and strengthens the coastal economy we all depend on.</p>
+                </div>
+            </div>
+
             <div id="shopline-loading" class="loading">Loading businesses</div>
             <div id="shopline-error" class="error" style="display: none;"></div>
 
@@ -2187,15 +2238,6 @@
                     </div>
                 </div>
                 <div id="search-results" class="business-grid"></div>
-                
-                <!-- Why Local Section -->
-                <div style="margin-top: 4rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
-                    <div></div>
-                    <div class="why-local-card">
-                        <h3 class="why-local-title">WHY LOCAL?</h3>
-                        <p class="why-local-text">Supporting Santa Cruz businesses keeps our community thriving, preserves local character, and strengthens the coastal economy we all depend on.</p>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -2233,8 +2275,8 @@
     </div>
 
     <!-- Wave Pattern Footer -->
-    <footer style="margin-top: 6rem; padding: 3rem 0; background: repeating-linear-gradient(45deg, #0a4f6e 0px, #0a4f6e 20px, #e8d5b7 20px, #e8d5b7 40px); border-top: 3px solid #0a4f6e; position: relative; z-index: 1;">
-        <div class="container" style="text-align: center; color: white; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
+    <footer style="margin-top: 6rem; padding: 3rem 0; background: repeating-linear-gradient(45deg, rgba(10, 79, 110, 0.08) 0px, rgba(10, 79, 110, 0.08) 20px, rgba(232, 213, 183, 0.05) 20px, rgba(232, 213, 183, 0.05) 40px); border-top: 1px solid rgba(10, 79, 110, 0.2); position: relative; z-index: 1;">
+        <div class="container" style="text-align: center; color: #0a4f6e; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
             <p style="margin: 0; font-size: 0.875rem;">Harbor - Supporting Santa Cruz's Coastal Economy</p>
         </div>
     </footer>
