@@ -1820,9 +1820,41 @@
             flex-direction: column;
             gap: 0.5rem;
         }
+
+        /* Top right Business Login button */
+        .top-login-button {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            padding: 0.75rem 1.5rem;
+            background: #0a4f6e;
+            color: #e8d5b7;
+            border: 3px solid #0a4f6e;
+            border-radius: 0;
+            font-weight: 700;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 6px 6px 0 0 rgba(10, 79, 110, 0.3);
+            transform: rotate(1deg);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .top-login-button:hover {
+            transform: rotate(0deg) translateY(-2px);
+            box-shadow: 8px 8px 0 0 rgba(10, 79, 110, 0.4);
+            background: #0a4f6e;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <!-- Top right Business Login button -->
+    <button class="top-login-button" onclick="scrollToAuth()">Business Login</button>
+
     <div class="container">
         <h1>Harbor</h1>
         <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
@@ -2718,6 +2750,21 @@
             setTimeout(initLoginForm, 100);
         }
 
+        // Scroll functions
+        function scrollToAuth() {
+            const authContainer = document.getElementById('auth-container');
+            if (authContainer) {
+                // Show auth container if hidden
+                authContainer.style.display = 'block';
+                // Switch to login form
+                showAuthForm('login');
+                // Small delay to ensure form is shown, then scroll
+                setTimeout(() => {
+                    authContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2728,6 +2775,12 @@
                     return;
                 }
                 showTab(tabName);
+                // If shopline tab, scroll to top (boardwalk hero)
+                if (tabName === 'shopline') {
+                    setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
+                }
             });
         });
 
