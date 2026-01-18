@@ -1,203 +1,17 @@
+import csv
 import json
-import os
-import re
-import httpx
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set
 
-from app.core.config import settings
-from app.services.events_ingest_downtown import RawEvent
+from backend.app.services.deepseek_client import call_deepseek
 
 
-def generate_text(prompt: str) -> str:
-    """
-    Generate text using Gemini via OpenRouter.
-    Synchronous wrapper for shopline_engine compatibility.
-    """
-    if not settings.openrouter_api_key or not settings.openrouter_api_key.strip():
-        return '{"categories": []}'
-    
-    try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.openrouter_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.gemini_model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                    "max_tokens": 500,
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-    except Exception as e:
-        # Fallback on error
-        return '{"categories": []}'
-
-
-CANONICAL_CATEGORIES: List[str] = [
-    "music",
-    "art",
-    "dance",
-    "food",
-    "theatre",
-    "comedy",
-    "family",
-    "outdoors",
-    "community",
-    "education",
-    "nightlife",
-    "market",
-]
-
-
-@dataclass
-class Event:
-    id: str
-    title: str
-    description: str
-    start_time_text: str
-    location: str
-    url: str
-    categories: List[str]          # canonical
-    source: str
-
-
-def normalize_event_categories(title: str, description: str) -> List[str]:
-    """
-    Gemini Flash: map free text -> subset of CANONICAL_CATEGORIES
-    Returns up to 3 categories.
-    """
-    allowed = ", ".join(CANONICAL_CATEGORIES)
-
-    prompt = f"""
-You are categorizing an event into a SMALL fixed set of categories.
-
-Allowed categories: [{allowed}]
-
-Event title: {title}
-Event description: {description}
-
-Rules:
-- Choose ONLY from the allowed categories.
-- Return at most 3 categories.
-- Return ONLY valid JSON in this format: {{"categories": ["music","art"]}}
-"""
-
-    raw = generate_text(prompt).strip()
-    categories = _safe_extract_categories_json(raw)
-    # sanitize
-    categories = [c for c in categories if c in CANONICAL_CATEGORIES]
-    return categories[:3]
-
-
-def expand_user_query(selected_categories: List[str], user_text: Optional[str] = None) -> List[str]:
-    """
-    Gemini Flash: expand user's categories + optional free text into "tags" (still canonical-only here).
-    Keep it simple: return expanded canonical categories.
-    """
-    allowed = ", ".join(CANONICAL_CATEGORIES)
-    selected = [c for c in selected_categories if c in CANONICAL_CATEGORIES]
-
-    prompt = f"""
-You help expand a user's interest for event recommendations.
-
-Allowed categories: [{allowed}]
-User selected categories: {selected}
-User additional text (may be empty): {user_text or ""}
-
-Return:
-- A list of categories from the allowed set that should be considered relevant
-- Include the selected categories, plus closely related ones if justified
-
-Return ONLY JSON: {{"expanded_categories": ["music","nightlife"]}}
-"""
-
-    raw = generate_text(prompt).strip()
-    expanded = _safe_extract_key_as_list(raw, "expanded_categories")
-    expanded = [c for c in expanded if c in CANONICAL_CATEGORIES]
-
-    # Always include original selection
-    out = list(dict.fromkeys(selected + expanded))
-    return out
-
-
-def build_event_from_raw(raw: RawEvent, categories: List[str]) -> Event:
-    return Event(
-        id=f"{raw.source}:{raw.source_id}",
-        title=raw.title,
-        description=raw.description,
-        start_time_text=raw.start_time_text,
-        location=raw.location,
-        url=raw.url,
-        categories=categories,
-        source=raw.source,
-    )
-
-
-def recommend_events(
-    events: List[Event],
-    selected_categories: List[str],
-    user_text: Optional[str] = None,
-    limit: int = 10,
-) -> List[Event]:
-    """
-    Deterministic, explainable ranking:
-      score = (#overlap between expanded user categories and event categories,
-               -len(event.categories))
-    Filters out 0-overlap.
-    """
-    expanded = set(expand_user_query(selected_categories, user_text=user_text))
-
-    scored: List[Tuple[Tuple[int, int], Event]] = []
-    for e in events:
-        overlap = len(expanded.intersection(set(e.categories)))
-        if overlap <= 0:
-            continue
-        score = (overlap, -len(e.categories))
-        scored.append((score, e))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [e for _, e in scored[:limit]]
-
-
-# -----------------------
-# JSON helpers (robust-ish)
-# -----------------------
-
-def _safe_extract_categories_json(raw: str) -> List[str]:
-    # Find the first {...} block to avoid extra text
-    obj = _extract_first_json_object(raw)
-    if not obj:
-        return []
-    try:
-        data = json.loads(obj)
-        cats = data.get("categories", [])
-        return cats if isinstance(cats, list) else []
-    except Exception:
-        return []
-
-
-def _safe_extract_key_as_list(raw: str, key: str) -> List[str]:
-    obj = _extract_first_json_object(raw)
-    if not obj:
-        return []
-    try:
-        data = json.loads(obj)
-        val = data.get(key, [])
-        return val if isinstance(val, list) else []
-    except Exception:
-        return []
+# -----------------------------
+# Shopline Businesses (CSV + Classifications + Gemini)
+# -----------------------------
 
 
 def _extract_first_json_object(text: str) -> Optional[str]:
-    # naive brace matching
+    """Return the first JSON object substring found in text (naive brace matching)."""
     start = text.find("{")
     if start == -1:
         return None
@@ -210,3 +24,231 @@ def _extract_first_json_object(text: str) -> Optional[str]:
             if depth == 0:
                 return text[start : i + 1]
     return None
+
+
+def _norm(s: Any) -> str:
+    return str(s).strip() if s is not None else ""
+
+
+def _norm_lower(s: Any) -> str:
+    return _norm(s).lower()
+
+
+def load_business_catalog_from_csv(csv_path: str) -> List[Dict[str, Any]]:
+    """Load businesses from CSV.
+
+    Supports headers (case-insensitive):
+      - Business Name OR name
+      - Location OR location
+      - Classification OR classification OR category
+
+    Optional headers:
+      - description
+      - categories (comma-separated)
+
+    Returns a list of dicts with keys:
+      name, location, classification, description, categories
+    """
+    out: List[Dict[str, Any]] = []
+
+    with open(csv_path, "r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            return out
+
+        field_map = {h: _norm_lower(h) for h in reader.fieldnames}
+
+        def get_any(r: Dict[str, Any], keys: List[str]) -> str:
+            for k in keys:
+                v = r.get(k)
+                if v is not None and _norm(v) != "":
+                    return str(v)
+            return ""
+
+        for row in reader:
+            r = {field_map.get(k, _norm_lower(k)): v for k, v in row.items()}
+
+            name = _norm(get_any(r, ["business name", "name"]))
+            if not name:
+                continue
+
+            location = _norm(get_any(r, ["location"]))
+            classification = _norm(get_any(r, ["classification", "category"]))
+            description = _norm(get_any(r, ["description"]))
+
+            # categories: explicit column, else derive a basic category from classification
+            raw_categories = get_any(r, ["categories"])  # comma-separated
+            categories = [c.strip().lower() for c in str(raw_categories).split(",") if c.strip()] if raw_categories else []
+
+            if classification:
+                categories.append(classification.strip().lower())
+
+            # de-dupe while preserving order
+            seen = set()
+            categories = [c for c in categories if not (c in seen or seen.add(c))]
+
+            out.append(
+                {
+                    "name": name,
+                    "location": location,
+                    "classification": classification,
+                    "description": description,
+                    "categories": categories,
+                    "_raw": r,
+                }
+            )
+
+    return out
+
+
+def get_available_classifications(businesses: Iterable[Dict[str, Any]]) -> List[str]:
+    """Return unique classifications (for UI chips / dropdown).
+
+    Sorted alphabetically, with empty/unknown removed.
+    """
+    vals: Set[str] = set()
+    for b in businesses:
+        c = _norm(b.get("classification"))
+        if c:
+            vals.add(c)
+    return sorted(vals, key=lambda x: x.lower())
+
+
+def _matches_classification(b: Dict[str, Any], desired: str) -> bool:
+    """Case-insensitive partial match against business classification."""
+    desired_l = desired.strip().lower()
+    if not desired_l:
+        return True
+    c = _norm_lower(b.get("classification"))
+    return desired_l in c
+
+
+def filter_businesses(
+    businesses: List[Dict[str, Any]],
+    classifications: Optional[List[str]] = None,
+    query: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Filter businesses by selected classifications and/or free-text query."""
+    selected = [s.strip() for s in (classifications or []) if str(s).strip()]
+    q = (query or "").strip().lower()
+
+    out: List[Dict[str, Any]] = []
+    for b in businesses:
+        if selected:
+            if not any(_matches_classification(b, s) for s in selected):
+                continue
+
+        if q:
+            hay = " ".join(
+                [
+                    _norm_lower(b.get("name")),
+                    _norm_lower(b.get("location")),
+                    _norm_lower(b.get("classification")),
+                    _norm_lower(b.get("description")),
+                ]
+            )
+            if q not in hay:
+                continue
+
+        out.append(b)
+
+    return out
+
+
+def _alphabetical_fallback(businesses: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]]:
+    ranked = list(businesses)
+    ranked.sort(key=lambda x: _norm_lower(x.get("name")))
+    return ranked[: max(1, min(int(limit), 50))]
+
+
+def recommend_businesses_via_gemini(
+    businesses: List[Dict[str, Any]],
+    classifications: Optional[List[str]] = None,
+    query: Optional[str] = None,
+    limit: int = 10,
+) -> List[Dict[str, Any]]:
+    """Use Gemini 1.5 to rank businesses based on user-selected classifications and free-text intent.
+
+    This is designed for the UI pattern:
+      - User can click a classification chip (e.g., "Food & Drink", "Retail") OR type what they want.
+
+    Expected Gemini response (best-effort):
+      {"ranked_names": ["Business A", "Business B", ...]}
+
+    Falls back to alphabetical order on any failure.
+    """
+    if not businesses:
+        return []
+
+    pool = filter_businesses(businesses, classifications=classifications, query=query)
+    if not pool:
+        pool = businesses
+
+    # Keep prompt bounded
+    pre = _alphabetical_fallback(pool, limit=max(20, int(limit) * 2))
+
+    prompt_payload = {
+        "task": "Rank local businesses for a user based on classification filters and free-text intent.",
+        "preferences": {
+            "classifications": classifications or [],
+            "query": query or "",
+            "limit": max(1, min(int(limit), 50)),
+        },
+        "businesses": [
+            {
+                "name": b.get("name"),
+                "location": b.get("location"),
+                "classification": b.get("classification"),
+                "description": b.get("description"),
+            }
+            for b in pre
+        ],
+        "output_format": {"ranked_names": ["string (business name)"]},
+        "instructions": "Return JSON only. ranked_names must be a list of names from the provided businesses.",
+    }
+
+    prompt = (
+        "Return JSON only.\n\n" + json.dumps(prompt_payload, ensure_ascii=False)
+    )
+
+    try:
+        # NOTE: Uses shared API key; Gemini 1.5 is routed behind call_deepseek in this repo
+        raw = call_deepseek(
+            messages=[{"role": "user", "content": prompt}],
+        ).strip()
+        obj = _extract_first_json_object(raw)
+        if not obj:
+            return _alphabetical_fallback(pre, limit)
+        data = json.loads(obj)
+        ranked_names = data.get("ranked_names") or []
+        ranked_names = [str(x).strip() for x in ranked_names if str(x).strip()]
+        if not ranked_names:
+            return _alphabetical_fallback(pre, limit)
+
+        by_name = {str(b.get("name")).strip().lower(): b for b in pre}
+        ranked: List[Dict[str, Any]] = []
+        used = set()
+        for n in ranked_names:
+            k = n.strip().lower()
+            b = by_name.get(k)
+            if b and k not in used:
+                ranked.append(b)
+                used.add(k)
+            if len(ranked) >= max(1, min(int(limit), 50)):
+                break
+
+        # Fill remaining slots alphabetically
+        if len(ranked) < max(1, min(int(limit), 50)):
+            for b in _alphabetical_fallback(pre, limit=50):
+                k = str(b.get("name")).strip().lower()
+                if k in used:
+                    continue
+                ranked.append(b)
+                used.add(k)
+                if len(ranked) >= max(1, min(int(limit), 50)):
+                    break
+
+        return ranked
+
+    except Exception:
+        return _alphabetical_fallback(pre, limit)
