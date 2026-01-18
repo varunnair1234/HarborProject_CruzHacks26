@@ -2648,6 +2648,8 @@
                 
                 setTimeout(() => {
                     checkAuth();
+                    // Scroll to top of page after login
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }, 500);
             } catch (err) {
                 console.error('Login error:', err);
