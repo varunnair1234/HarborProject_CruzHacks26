@@ -2252,7 +2252,7 @@
                 <div class="hero-header">
                     <div class="hero-title-section">
                         <h1>Harbor</h1>
-                        <p class="hero-tagline"><strong>Why Harbor?</strong> Get AI-powered cash flow analysis, tourism forecasts, and rent impact simulations—all in one place. Make data-driven decisions to keep your Santa Cruz business thriving.</p>
+                        <p class="hero-tagline"><strong>Why Harbor?</strong> Help your community discover local small businesses while making data-driven decisions to keep your Santa Cruz business thriving. Get AI-powered cash flow analysis, tourism forecasts, and rent impact simulations—all in one place.</p>
                         <div>
                             <div class="hero-location-badge">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px;">
@@ -2778,10 +2778,13 @@
                     return;
                 }
                 showTab(tabName);
-                // If shopline tab, scroll to top (boardwalk hero)
+                // If shopline tab, scroll to shopline hero section
                 if (tabName === 'shopline') {
                     setTimeout(() => {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        const shoplineHero = document.getElementById('shopline-hero');
+                        if (shoplineHero) {
+                            shoplineHero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
                     }, 100);
                 }
             });
@@ -2815,8 +2818,13 @@
                 loadPreviousAnalyses();
             } else if (tabName === 'shopline') {
                 loadAllBusinesses();
-                // Reset scroll to show boardwalk hero
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Scroll to shopline hero section
+                setTimeout(() => {
+                    const shoplineHero = document.getElementById('shopline-hero');
+                    if (shoplineHero) {
+                        shoplineHero.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
                 // Reinitialize scroll handler
                 setTimeout(initBoardwalkScroll, 100);
             } else if (tabName === 'touristpulse') {
