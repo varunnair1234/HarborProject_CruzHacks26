@@ -26,14 +26,13 @@ DATABASE_URL = (settings.database_url or "").strip()
 
 def _normalize_database_url(url: str) -> str:
     """
-    Ensure Postgres URLs use psycopg v3 driver, not psycopg2.
-    - Supabase often provides: postgresql://...
-    - We want: postgresql+psycopg://...
+    Ensure Postgres URLs use psycopg v3 driver.
+    Supabase often provides: postgresql://...
+    We want: postgresql+psycopg://...
     """
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+psycopg://", 1)
     if url.startswith("postgres://"):
-        # Older scheme; normalize to postgresql+psycopg
         return url.replace("postgres://", "postgresql+psycopg://", 1)
     return url
 
@@ -50,15 +49,19 @@ def _make_engine(database_url: str) -> Engine:
     # Postgres / Supabase
     normalized = _normalize_database_url(database_url)
 
-    # Supabase requires SSL
-    connect_args = {"sslmode": "require"} if normalized.startswith("postgresql") else {}
+    # psycopg3 fix:
+    # - prepare_threshold=0 disables server-side prepared statements (prevents ProtocolViolation)
+    # - sslmode=require for Supabase
+    # - pool_pre_ping + pool_recycle reduces stale-connection issues on hosted Postgres
+    connect_args = {"sslmode": "require", "prepare_threshold": 0}
 
     return create_engine(
         normalized,
         connect_args=connect_args,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20,
+        pool_recycle=300,
+        pool_size=5,         # keep modest on Render
+        max_overflow=10,
     )
 
 
