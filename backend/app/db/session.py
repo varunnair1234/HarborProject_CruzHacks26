@@ -19,6 +19,7 @@ from app.db.models import (  # noqa: F401
     LLMOutput,
     ExternalCache,
     Business,
+    BusinessProfile,
 )
 
 DATABASE_URL = (settings.database_url or "").strip()

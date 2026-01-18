@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional
-from pydantic import Field
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
 
     # API Keys
-    openrouter_api_key: str
+    openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
+    google_api_key: str = Field(default="", alias="GOOGLE_API_KEY")
     
     # LLM Models
     deepseek_r1_model: str = "deepseek/deepseek-r1"
