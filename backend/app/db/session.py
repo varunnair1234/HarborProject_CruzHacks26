@@ -6,7 +6,7 @@ from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool, NullPool
+from sqlalchemy.pool import StaticPool, QueuePool
 
 from app.core.config import settings
 from app.db.models import Base
@@ -60,13 +60,16 @@ def _make_engine(database_url: str) -> Engine:
         "prepare_threshold": 0,  # Disable prepared statements (0 = never prepare)
     }
 
-    # Use NullPool for production (no connection reuse = no prepared statement collisions)
-    # This trades some performance for reliability on Supabase/Render
+    # Use QueuePool with conservative settings for Supabase pooler
+    # Small pool size to avoid overwhelming PgBouncer, but still reuse connections
     return create_engine(
         normalized,
         connect_args=connect_args,
-        poolclass=NullPool,
-        pool_pre_ping=True,
+        poolclass=QueuePool,
+        pool_size=3,  # Small pool for Supabase pooler compatibility
+        max_overflow=5,  # Allow some overflow connections
+        pool_pre_ping=True,  # Verify connections before using
+        pool_recycle=300,  # Recycle connections after 5 minutes
         # SQLAlchemy: disable compiled statement cache
         execution_options={"compiled_cache": None},
     )
