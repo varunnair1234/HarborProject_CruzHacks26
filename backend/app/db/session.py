@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import logging
 from typing import Generator
 import logging
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+<<<<<<< HEAD
+from sqlalchemy.pool import StaticPool, NullPool
+=======
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.exc import DisconnectionError, OperationalError
+>>>>>>> 3b7e3a8460534a3844a410b909d660cc6bf34784
 
 from app.core.config import settings
 from app.db.models import Base
@@ -26,7 +31,14 @@ from app.db.models import (  # noqa: F401
     BusinessProfile,
 )
 
+logger = logging.getLogger(__name__)
+
 DATABASE_URL = (settings.database_url or "").strip()
+
+
+def _is_production() -> bool:
+    """Check if running in production environment."""
+    return settings.environment.lower() in ("production", "prod")
 
 
 def _normalize_database_url(url: str) -> str:
@@ -56,14 +68,21 @@ def _make_engine(database_url: str) -> Engine:
         "prepare_threshold": 0,  # Disable prepared statements (0 = never prepare)
     }
 
+    # Use NullPool for production (no connection reuse = no prepared statement collisions)
+    # This trades some performance for reliability on Supabase/Render
     return create_engine(
         normalized,
         connect_args=connect_args,
+        poolclass=NullPool,
         pool_pre_ping=True,
+<<<<<<< HEAD
+        # SQLAlchemy: disable compiled statement cache
+=======
         pool_recycle=300,  # Recycle connections every 5 minutes
         pool_size=3,  # Smaller pool to reduce connection issues
         max_overflow=5,  # Reduced overflow
         # Disable statement caching to avoid prepared statement issues
+>>>>>>> 3b7e3a8460534a3844a410b909d660cc6bf34784
         execution_options={"compiled_cache": None},
         # Use NullPool if using Supabase pooler to avoid double pooling
         # But keep regular pool for now since it's working for some requests
@@ -73,7 +92,7 @@ def _make_engine(database_url: str) -> Engine:
 engine: Engine = _make_engine(DATABASE_URL)
 
 # Debug: confirm the dialect is correct (should show postgresql+psycopg://)
-print("DB URL (sanitized):", engine.url.render_as_string(hide_password=True))
+logger.info("DB URL (sanitized): %s", engine.url.render_as_string(hide_password=True))
 
 
 @event.listens_for(engine, "connect")
@@ -96,7 +115,22 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+    """
+    Initialize database tables.
+
+    In production, this is a no-op. Use Alembic migrations instead.
+    In development (SQLite), creates tables automatically.
+    """
+    if _is_production():
+        logger.info("Production environment detected - skipping auto table creation. Use Alembic migrations.")
+        return
+
+    # Only auto-create tables in development (SQLite)
+    if DATABASE_URL.startswith("sqlite"):
+        logger.info("Development environment - creating tables automatically")
+        Base.metadata.create_all(bind=engine)
+    else:
+        logger.info("Non-SQLite database in non-production - skipping auto table creation")
 
 
 def get_db() -> Generator[Session, None, None]:
