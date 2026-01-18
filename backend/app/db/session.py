@@ -58,13 +58,16 @@ def _make_engine(database_url: str) -> Engine:
 
     # Supabase pooler doesn't support prepared statements properly
     # Disable them completely to avoid "prepared statement does not exist" errors
+    # Add connection and query timeouts to prevent hanging
     connect_args = {
         "sslmode": "require",
         "prepare_threshold": 0,  # Disable prepared statements (0 = never prepare)
+        "connect_timeout": 10,  # 10 second connection timeout
+        "options": "-c statement_timeout=30000",  # 30 second query timeout (in milliseconds)
     }
 
-    # Use NullPool for production (no connection reuse = no prepared statement collisions)
-    # This trades some performance for reliability on Supabase/Render
+    # Use NullPool for Supabase pooler to avoid double pooling issues
+    # This prevents connection pool exhaustion and hanging connections
     return create_engine(
         normalized,
         connect_args=connect_args,
@@ -72,8 +75,6 @@ def _make_engine(database_url: str) -> Engine:
         pool_pre_ping=True,
         # SQLAlchemy: disable compiled statement cache
         execution_options={"compiled_cache": None},
-        # Use NullPool if using Supabase pooler to avoid double pooling
-        # But keep regular pool for now since it's working for some requests
     )
 
 
@@ -122,8 +123,21 @@ def init_db() -> None:
 
 
 def get_db() -> Generator[Session, None, None]:
+    """
+    Database session dependency with proper cleanup.
+    Ensures connections are always closed even on errors.
+    """
     db = SessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database session error: {e}", exc_info=True)
+        raise
     finally:
-        db.close()
+        # Always close the session, even if there was an error
+        try:
+            db.close()
+        except Exception as close_error:
+            logger.error(f"Error closing database session: {close_error}")
