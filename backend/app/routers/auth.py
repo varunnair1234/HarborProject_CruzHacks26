@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import timedelta
 import logging
+import csv
+import os
 
 from app.db.session import get_db
 from app.db.models import Business
@@ -21,6 +23,47 @@ from app.schemas.auth import BusinessProfileInput, BusinessProfileResponse, Busi
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Path to Shopline CSV file
+SHOPLINE_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "shopline_businesses_datafile.csv")
+
+
+def add_business_to_shopline_csv(business_name: str, address: str, business_type: str):
+    """Add a new business to the Shopline CSV file."""
+    try:
+        # Check if business already exists in CSV
+        if os.path.exists(SHOPLINE_CSV_PATH):
+            with open(SHOPLINE_CSV_PATH, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("Business Name", "").strip().lower() == business_name.strip().lower():
+                        logger.info(f"Business '{business_name}' already exists in Shopline CSV, skipping")
+                        return
+        
+        # Check if file exists, if not create it with headers
+        file_exists = os.path.exists(SHOPLINE_CSV_PATH)
+        
+        with open(SHOPLINE_CSV_PATH, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            # Write header if file is new
+            if not file_exists:
+                writer.writerow(["Business Name", "Location", "Classification"])
+            # Write business data
+            writer.writerow([business_name, address, business_type])
+        
+        logger.info(f"Added business '{business_name}' to Shopline CSV")
+        
+        # Invalidate cache in shopline router
+        try:
+            import app.routers.shopline as shopline_module
+            shopline_module._BUSINESS_CATALOG_CACHE = None
+            logger.info("Invalidated Shopline business catalog cache")
+        except Exception as e:
+            logger.warning(f"Could not invalidate Shopline cache: {e}")
+            
+    except Exception as e:
+        logger.error(f"Failed to add business to Shopline CSV: {e}", exc_info=True)
+        # Don't fail signup if CSV write fails
 
 @router.post("/profile", response_model=BusinessProfileResponse, status_code=status.HTTP_201_CREATED)
 async def create_business_profile(
@@ -162,6 +205,17 @@ async def signup(
         
         db.refresh(business)
         logger.info(f"Business account created successfully with ID: {business.id}")
+        
+        # Add business to Shopline CSV
+        try:
+            add_business_to_shopline_csv(
+                business_name=business.business_name,
+                address=business.address,
+                business_type=business.business_type
+            )
+        except Exception as e:
+            logger.warning(f"Failed to add business to Shopline CSV: {e}")
+            # Continue even if CSV write fails
         
         return BusinessInfo(
             id=business.id,
