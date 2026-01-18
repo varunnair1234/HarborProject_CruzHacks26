@@ -1,10 +1,14 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError, DisconnectionError
+import logging
 
 from app.db.session import get_db
 from app.db.models import Business
 from app.core.security import verify_token
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -32,7 +36,18 @@ async def get_current_business(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    business = db.query(Business).filter(Business.email == email).first()
+    try:
+        business = db.query(Business).filter(Business.email == email).first()
+    except (OperationalError, DisconnectionError) as e:
+        error_msg = str(e).lower()
+        if "timeout" in error_msg or "connection" in error_msg:
+            logger.error(f"Database connection timeout in get_current_business: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection timeout. Please try again in a moment."
+            )
+        raise
+    
     if business is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

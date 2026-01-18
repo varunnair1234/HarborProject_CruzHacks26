@@ -163,8 +163,25 @@ async def analyze_cashflow(
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error in analyze_cashflow: {e}")
-        db.rollback()
+        error_msg = str(e).lower()
+        # Check if it's a database connection error
+        if "timeout" in error_msg or "connection" in error_msg:
+            logger.error(f"Database connection error in analyze_cashflow: {e}", exc_info=True)
+            if db:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+            raise HTTPException(
+                status_code=503, 
+                detail="Database connection timeout. Please try again in a moment."
+            )
+        logger.error(f"Unexpected error in analyze_cashflow: {e}", exc_info=True)
+        if db:
+            try:
+                db.rollback()
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

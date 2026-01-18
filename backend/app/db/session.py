@@ -3,11 +3,14 @@ from __future__ import annotations
 import logging
 from typing import Generator
 import logging
+import time
+from functools import wraps
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool, NullPool
+from sqlalchemy.exc import OperationalError, DisconnectionError
 
 from app.core.config import settings
 from app.db.models import Base
@@ -62,7 +65,7 @@ def _make_engine(database_url: str) -> Engine:
     connect_args = {
         "sslmode": "require",
         "prepare_threshold": 0,  # Disable prepared statements (0 = never prepare)
-        "connect_timeout": 10,  # 10 second connection timeout
+        "connect_timeout": 15,  # 15 second connection timeout (increased from 10)
         "options": "-c statement_timeout=30000",  # 30 second query timeout (in milliseconds)
     }
 
@@ -124,20 +127,55 @@ def init_db() -> None:
 
 def get_db() -> Generator[Session, None, None]:
     """
-    Database session dependency with proper cleanup.
+    Database session dependency with proper cleanup and retry logic.
     Ensures connections are always closed even on errors.
+    Retries connection on timeout errors.
     """
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Database session error: {e}", exc_info=True)
-        raise
-    finally:
-        # Always close the session, even if there was an error
+    max_retries = 3
+    retry_delay = 0.5  # Start with 0.5 seconds
+    
+    for attempt in range(max_retries):
+        db = None
         try:
-            db.close()
-        except Exception as close_error:
-            logger.error(f"Error closing database session: {close_error}")
+            db = SessionLocal()
+            yield db
+            db.commit()
+            return
+        except (OperationalError, DisconnectionError) as e:
+            if db:
+                try:
+                    db.rollback()
+                    db.close()
+                except Exception:
+                    pass
+            
+            # Check if it's a connection timeout error
+            error_str = str(e).lower()
+            is_timeout = "timeout" in error_str or "connection" in error_str
+            
+            if is_timeout and attempt < max_retries - 1:
+                wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                logger.warning(
+                    f"Database connection timeout (attempt {attempt + 1}/{max_retries}). "
+                    f"Retrying in {wait_time:.2f}s..."
+                )
+                time.sleep(wait_time)
+                continue
+            else:
+                logger.error(f"Database connection error after {attempt + 1} attempts: {e}", exc_info=True)
+                raise
+        except Exception as e:
+            if db:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+            logger.error(f"Database session error: {e}", exc_info=True)
+            raise
+        finally:
+            # Always close the session, even if there was an error
+            if db:
+                try:
+                    db.close()
+                except Exception as close_error:
+                    logger.error(f"Error closing database session: {close_error}")
