@@ -2,7 +2,7 @@ import csv
 import json
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from backend.app.services.deepseek_client import call_deepseek
+from app.services.deepseek_client import call_deepseek
 
 
 # -----------------------------
