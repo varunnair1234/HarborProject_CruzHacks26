@@ -36,8 +36,13 @@ def _load_business_catalog_from_csv(csv_path: str) -> list:
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row.get("name"):
-                    rows.append(row)
+                if row.get("Business Name"):
+                    # Normalize column names to match what shopline_engine expects
+                    rows.append({
+                        "name": row.get("Business Name", ""),
+                        "location": row.get("Location", ""),
+                        "classification": row.get("Classification", ""),
+                    })
         logger.info(f"Loaded {len(rows)} businesses from {csv_path}")
         return rows
     except Exception as e:
