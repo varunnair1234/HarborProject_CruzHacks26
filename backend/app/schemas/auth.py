@@ -7,7 +7,16 @@ class BusinessSignup(BaseModel):
     email: EmailStr
     business_name: str = Field(..., min_length=1, max_length=255)
     address: str = Field(..., min_length=1, max_length=500)
-    business_type: Literal["cafe", "boutique", "bakery/dessert", "bookstore/stationary", "art"]
+    business_type: Literal[
+        "food & drink",
+        "arts, culture & creative",
+        "nonprofit, education & community",
+        "services & professional",
+        "retail – apparel & accessories",
+        "personal care & wellness",
+        "business",
+        "entertainment & recreation"
+    ]
     password: str = Field(..., min_length=8, max_length=72, description="Password must be 8-72 characters")
 
 

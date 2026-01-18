@@ -1634,6 +1634,30 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
 
+        .btn-back-to-top {
+            width: 100%;
+            margin-top: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            background: #e8d5b7;
+            color: #0a4f6e;
+            border: 2px solid #0a4f6e;
+            border-radius: 0;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .btn-back-to-top:hover {
+            background: #0a4f6e;
+            color: #e8d5b7;
+            transform: translateY(-2px);
+            box-shadow: 4px 4px 0 0 rgba(10, 79, 110, 0.3);
+        }
+
         .auth-tabs {
             display: flex;
             gap: 1rem;
@@ -2398,11 +2422,14 @@
                     <label for="signup-business-type">Business Type</label>
                     <select id="signup-business-type" required>
                         <option value="">Select a type</option>
-                        <option value="cafe">Cafe</option>
-                        <option value="boutique">Boutique</option>
-                        <option value="bakery/dessert">Bakery/Dessert</option>
-                        <option value="bookstore/stationary">Bookstore/Stationary</option>
-                        <option value="art">Art</option>
+                        <option value="food & drink">Food & Drink</option>
+                        <option value="arts, culture & creative">Arts, Culture & Creative</option>
+                        <option value="nonprofit, education & community">Nonprofit, Education & Community</option>
+                        <option value="services & professional">Services & Professional</option>
+                        <option value="retail – apparel & accessories">Retail – Apparel & Accessories</option>
+                        <option value="personal care & wellness">Personal Care & Wellness</option>
+                        <option value="business">Business</option>
+                        <option value="entertainment & recreation">Entertainment & Recreation</option>
                     </select>
                 </div>
                 <div class="auth-form-group">
@@ -2411,6 +2438,9 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Business Sign Up</button>
             </form>
+
+            <!-- Back to Top Button -->
+            <button class="btn-back-to-top" onclick="scrollToTop()">Back to Top</button>
         </div>
     </div>
 
@@ -2754,6 +2784,10 @@
         }
 
         // Scroll functions
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function scrollToAuth() {
             const authContainer = document.getElementById('auth-container');
             if (authContainer) {

@@ -102,7 +102,7 @@ class Business(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     business_name = Column(String(255), nullable=False)
     address = Column(String(500), nullable=False)
-    business_type = Column(String(50), nullable=False)  # cafe, boutique, bakery/dessert, bookstore/stationary, art
+    business_type = Column(String(50), nullable=False)  # food & drink, arts/culture & creative, nonprofit/education & community, services & professional, retail – apparel & accessories, personal care & wellness, business, entertainment & recreation
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
