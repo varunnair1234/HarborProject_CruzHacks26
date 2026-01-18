@@ -2116,11 +2116,11 @@
 
         <!-- Shopline Tab -->
         <div id="shopline" class="tab-content active">
-            <div class="shopline-hero" id="shopline-hero" style="display: none;">
+            <div class="shopline-hero" id="shopline-hero">
                 <div class="hero-header">
                     <div class="hero-title-section">
                         <h1>Harbor</h1>
-                        <p class="hero-tagline">business view</p>
+                        <p class="hero-tagline">The operating system for small businesses in Santa Cruz</p>
                         <div>
                             <div class="hero-location-badge">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px;">
@@ -2282,7 +2282,7 @@
     <!-- Wave Pattern Footer -->
     <footer style="margin-top: 6rem; padding: 3rem 0; background: repeating-linear-gradient(45deg, rgba(10, 79, 110, 0.08) 0px, rgba(10, 79, 110, 0.08) 20px, rgba(232, 213, 183, 0.05) 20px, rgba(232, 213, 183, 0.05) 40px); border-top: 1px solid rgba(10, 79, 110, 0.2); position: relative; z-index: 1;">
         <div class="container" style="text-align: center; color: #0a4f6e; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
-            <p style="margin: 0; font-size: 0.875rem;">Harbor - Supporting Santa Cruz's Coastal Economy</p>
+            <p style="margin: 0; font-size: 0.875rem;">Harbor - Supporting Santa Cruz's Small Businesses</p>
         </div>
     </footer>
 
@@ -2360,7 +2360,7 @@
             } else {
                 document.getElementById('auth-container').style.display = 'block'; // Show at bottom
                 document.getElementById('main-app').style.display = 'block'; // Show main app but only Shopline tab
-                document.getElementById('shopline-hero').style.display = 'none'; // Hide hero when not logged in
+                document.getElementById('shopline-hero').style.display = 'block'; // Show hero even when not logged in
                 // Hide protected tabs, show only Shopline
                 document.querySelectorAll('.tab-button[data-tab="touristpulse"]').forEach(btn => btn.style.display = 'none');
                 document.querySelectorAll('.tab-button[data-tab="cashflow"]').forEach(btn => btn.style.display = 'none');
