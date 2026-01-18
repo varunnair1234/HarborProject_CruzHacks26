@@ -1796,33 +1796,28 @@
         </div>
 
         <!-- Shopline Tab -->
-        <div id="shopline" class="tab-content">
+        <div id="shopline" class="tab-content active">
             <div class="section-header">
                 <div class="forecast-header">
                     <h2 class="forecast-title">Shopline</h2>
                     <div class="forecast-location">
-                        <span>Local Business Discovery</span>
+                        <span>Local Business Directory</span>
                     </div>
                 </div>
             </div>
 
             <div class="search-box">
-                <input type="text" id="shopline-query" placeholder="Search for local businesses (e.g., coffee shops, bookstores)">
-                <button onclick="searchBusinesses()" id="search-btn">Search</button>
+                <input type="text" id="shopline-query" placeholder="Filter businesses by name, category, or location...">
             </div>
 
-            <div id="shopline-loading" class="loading" style="display: none;">Searching local businesses</div>
+            <div id="shopline-loading" class="loading">Loading businesses</div>
             <div id="shopline-error" class="error" style="display: none;"></div>
 
             <div id="shopline-results" style="display: none;">
-                <h3 style="margin-bottom: 1rem;">Search Results</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">All Businesses <span id="business-count" style="font-weight: normal; color: #6b7280;"></span></h3>
+                </div>
                 <div id="search-results" class="business-grid"></div>
-            </div>
-
-            <div id="featured-section" style="margin-top: 2rem;">
-                <h3 style="margin-bottom: 1rem;">Featured Local Businesses</h3>
-                <div id="featured-loading" class="loading">Loading featured businesses</div>
-                <div id="featured-results" class="business-grid" style="display: none;"></div>
             </div>
         </div>
 
@@ -2153,7 +2148,7 @@
             } else if (tabName === 'cashflow') {
                 loadPreviousAnalyses();
             } else if (tabName === 'shopline') {
-                loadFeaturedBusinesses();
+                loadAllBusinesses();
             } else if (tabName === 'touristpulse') {
                 loadTouristOutlook();
             } else if (tabName === 'profile') {
@@ -2969,34 +2964,56 @@
         }
 
         // ===== Shopline Functions =====
-        document.getElementById('shopline-query').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchBusinesses();
+        let allBusinesses = []; // Cache all businesses for filtering
+
+        // Filter businesses as user types
+        document.getElementById('shopline-query').addEventListener('input', (e) => {
+            filterBusinesses(e.target.value);
         });
 
-        async function searchBusinesses() {
-            const query = document.getElementById('shopline-query').value.trim();
-            if (!query) return;
+        function filterBusinesses(query) {
+            const searchTerm = query.toLowerCase().trim();
 
+            if (!searchTerm) {
+                // Show all businesses if no search term
+                displayBusinesses(allBusinesses);
+                return;
+            }
+
+            // Filter businesses client-side
+            const filtered = allBusinesses.filter(b => {
+                const name = (b.name || '').toLowerCase();
+                const category = (b.category || '').toLowerCase();
+                const location = (b.location || '').toLowerCase();
+                const description = (b.description || '').toLowerCase();
+
+                return name.includes(searchTerm) ||
+                       category.includes(searchTerm) ||
+                       location.includes(searchTerm) ||
+                       description.includes(searchTerm);
+            });
+
+            displayBusinesses(filtered);
+        }
+
+        async function loadAllBusinesses() {
             const loadingEl = document.getElementById('shopline-loading');
             const errorEl = document.getElementById('shopline-error');
             const resultsSection = document.getElementById('shopline-results');
-            const resultsEl = document.getElementById('search-results');
-            const searchBtn = document.getElementById('search-btn');
+
+            // Check if already loaded
+            if (allBusinesses.length > 0) {
+                loadingEl.style.display = 'none';
+                resultsSection.style.display = 'block';
+                return;
+            }
 
             try {
-                searchBtn.disabled = true;
                 loadingEl.style.display = 'block';
                 errorEl.style.display = 'none';
                 resultsSection.style.display = 'none';
 
-                const response = await fetch(`${BACKEND_URL}/shopline/search`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: query,
-                        location: LOCATION
-                    })
-                });
+                const response = await fetch(`${BACKEND_URL}/shopline/all`);
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -3004,26 +3021,36 @@
                 }
 
                 const data = await response.json();
-                displaySearchResults(data.results);
+                allBusinesses = data.results || [];
+                displayBusinesses(allBusinesses);
 
             } catch (err) {
-                console.error('Error searching businesses:', err);
+                console.error('Error loading businesses:', err);
                 errorEl.innerHTML = `<strong>Error:</strong> ${err.message}`;
                 errorEl.style.display = 'block';
             } finally {
                 loadingEl.style.display = 'none';
-                searchBtn.disabled = false;
             }
         }
 
-        function displaySearchResults(results) {
+        function displayBusinesses(businesses) {
             const resultsSection = document.getElementById('shopline-results');
             const resultsEl = document.getElementById('search-results');
+            const countEl = document.getElementById('business-count');
 
-            if (results.length === 0) {
+            // Update count
+            const total = allBusinesses.length;
+            const showing = businesses.length;
+            if (showing === total) {
+                countEl.textContent = `(${total})`;
+            } else {
+                countEl.textContent = `(${showing} of ${total})`;
+            }
+
+            if (businesses.length === 0) {
                 resultsEl.innerHTML = '<div class="empty-state">No businesses found matching your search.</div>';
             } else {
-                resultsEl.innerHTML = results.map(b => `
+                resultsEl.innerHTML = businesses.map(b => `
                     <div class="business-card">
                         <h4>${b.name}</h4>
                         <span class="category">${b.category}</span>
@@ -3036,103 +3063,10 @@
             resultsSection.style.display = 'block';
         }
 
-        async function loadFeaturedBusinesses() {
-            const loadingEl = document.getElementById('featured-loading');
-            const resultsEl = document.getElementById('featured-results');
-
-            // Check if already loaded
-            if (resultsEl.innerHTML.trim()) {
-                loadingEl.style.display = 'none';
-                resultsEl.style.display = 'grid';
-                return;
-            }
-
-            try {
-                loadingEl.style.display = 'block';
-                resultsEl.style.display = 'none';
-
-                // First search for some businesses
-                const searchResponse = await fetch(`${BACKEND_URL}/shopline/search`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: 'local shops restaurants',
-                        location: LOCATION
-                    })
-                });
-
-                if (!searchResponse.ok) throw new Error('Failed to search businesses');
-
-                const searchData = await searchResponse.json();
-
-                if (searchData.results.length === 0) {
-                    resultsEl.innerHTML = '<div class="empty-state">No featured businesses available.</div>';
-                    resultsEl.style.display = 'block';
-                    loadingEl.style.display = 'none';
-                    return;
-                }
-
-                // Get featured rankings
-                const featuredResponse = await fetch(`${BACKEND_URL}/shopline/featured`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        businesses: searchData.results.slice(0, 6),
-                        ranking_factors: {
-                            local: 0.4,
-                            sustainable: 0.3,
-                            community: 0.3
-                        }
-                    })
-                });
-
-                if (!featuredResponse.ok) throw new Error('Failed to get featured businesses');
-
-                const featuredData = await featuredResponse.json();
-                displayFeaturedBusinesses(featuredData.featured);
-
-            } catch (err) {
-                console.error('Error loading featured businesses:', err);
-                resultsEl.innerHTML = `<div class="error"><strong>Error:</strong> ${err.message}</div>`;
-                resultsEl.style.display = 'block';
-            } finally {
-                loadingEl.style.display = 'none';
-            }
-        }
-
-        function displayFeaturedBusinesses(businesses) {
-            const resultsEl = document.getElementById('featured-results');
-
-            if (businesses.length === 0) {
-                resultsEl.innerHTML = '<div class="empty-state">No featured businesses available.</div>';
-            } else {
-                resultsEl.innerHTML = businesses.map(b => `
-                    <div class="business-card">
-                        <h4>${b.name}</h4>
-                        <span class="category">${b.category}</span>
-                        <div class="location">${b.location}</div>
-                        ${b.blurb ? `<div class="description">${b.blurb}</div>` : ''}
-                        ${b.highlights && b.highlights.length > 0 ? `
-                            <ul class="highlights-list">
-                                ${b.highlights.map(h => `<li>${h}</li>`).join('')}
-                            </ul>
-                        ` : ''}
-                        <div class="score">
-                            <div class="score-bar">
-                                <div class="score-fill" style="width: ${b.score}%"></div>
-                            </div>
-                            <span class="score-value">${b.score}</span>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            resultsEl.style.display = 'grid';
-        }
-
         // ===== Initialize =====
         window.addEventListener('DOMContentLoaded', () => {
-            loadTouristOutlook();
+            // Load Shopline businesses on page load (default tab)
+            loadAllBusinesses();
         });
     </script>
 </body>

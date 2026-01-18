@@ -94,6 +94,18 @@ def list_classifications():
     return {"classifications": get_available_classifications(businesses)}
 
 
+@router.get("/all")
+def get_all_businesses():
+    """Return all businesses from the catalog."""
+    businesses = _get_business_catalog()
+    results = [_business_to_profile(b) for b in businesses]
+    results.sort(key=lambda x: (x.name or "").lower())
+    return {
+        "results": results,
+        "total": len(results),
+    }
+
+
 @router.post("/search", response_model=ShoplineSearchResponse)
 async def search_businesses(search_input: ShoplineSearchInput, db: Session = Depends(get_db)):
     """Search businesses.
