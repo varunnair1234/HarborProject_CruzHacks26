@@ -1734,6 +1734,9 @@
 </head>
 <body>
     <div class="container">
+        <h1>Harbor</h1>
+        <p class="subtitle">The operating system for small businesses in Santa Cruz</p>
+
         <!-- Main App (shown by default) -->
         <div id="main-app">
             <!-- Tabs -->
@@ -2364,6 +2367,8 @@
                 document.querySelectorAll('.tab-button[data-tab="rentguard"]').forEach(btn => btn.style.display = 'none');
                 document.querySelectorAll('.tab-button[data-tab="profile"]').forEach(btn => btn.style.display = 'none');
                 showTab('shopline');
+                // Initialize login form when auth container is shown
+                setTimeout(initLoginForm, 100);
             }
         }
 
