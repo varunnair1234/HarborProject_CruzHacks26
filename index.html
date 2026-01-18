@@ -159,6 +159,21 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
+        .outlook-card.moderate {
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+        }
+
+        .outlook-card.low {
+            background: #fef9e7;
+            border: 1px solid #fef3c7;
+        }
+
+        .outlook-card.high {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+        }
+
         .outlook-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
@@ -1961,7 +1976,10 @@
 
             outlook.forEach(day => {
                 const card = document.createElement('div');
-                card.className = 'outlook-card';
+                const activityClass = day.demand_level === 'high' ? 'high' : 
+                                     day.demand_level === 'moderate' ? 'moderate' : 
+                                     'low';
+                card.className = `outlook-card ${activityClass}`;
 
                 // Extract key information from drivers
                 let weatherText = '';
@@ -2026,9 +2044,7 @@
                 const activityLabel = day.demand_level === 'high' ? 'High Activity' : 
                                     day.demand_level === 'moderate' ? 'Moderate Activity' : 
                                     'Low Activity';
-                const activityClass = day.demand_level === 'high' ? 'high' : 
-                                     day.demand_level === 'moderate' ? 'moderate' : 
-                                     'low';
+                // activityClass already defined above
                 const confidencePercent = day.confidence ? Math.round(day.confidence * 100) : 0;
                 const { dayName, dateStr } = formatDateWithDay(day.date);
 
@@ -2051,17 +2067,9 @@
                             <div class="card-day">${dayName}</div>
                             <div class="card-date">${dateStr}</div>
                         </div>
-                        <div class="activity-badge-container">
-                            <div class="activity-badge ${activityClass}">
-                                <div class="activity-icon">${activityIcon}</div>
-                                ${activityLabel}
-                            </div>
-                            <div class="activity-progress-container">
-                                <div class="activity-progress-bar">
-                                    <div class="activity-progress-fill" style="width: ${confidencePercent}%"></div>
-                                </div>
-                                <span class="activity-percentage">${confidencePercent}%</span>
-                            </div>
+                        <div class="activity-badge ${activityClass}">
+                            <div class="activity-icon">${activityIcon}</div>
+                            ${activityLabel}
                         </div>
                     </div>
                     ${day.summary ? `<div class="card-summary">${day.summary}</div>` : ''}
@@ -2088,8 +2096,8 @@
                         ${trafficText ? `
                             <div class="driver-item">
                                 <div class="driver-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V11.25c0-1.621-1.505-2.125-3-2.125m0 12.375h-1.5c-.621 0-1.125.504-1.125 1.125v3.375c0 .621.504 1.125 1.125 1.125h1.5c.621 0 1.125-.504 1.125-1.125v-3.375c0-.621-.504-1.125-1.125-1.125m8.25-9.75H21m-1.5 0v-1.5m0 1.5v-1.5m-1.5 0h1.5m-1.5 0h-1.5m0 0H12m-1.5 0H9.75m0 0H8.25m1.5 0v1.5m0-1.5v1.5m0 0h1.5m-1.5 0h1.5" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5h13.5m-13.5 0a3 3 0 00-3 3v9a3 3 0 003 3h13.5a3 3 0 003-3v-9a3 3 0 00-3-3M5.25 7.5V6a2.25 2.25 0 012.25-2.25h9A2.25 2.25 0 0118.75 6v1.5M8.25 15a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm9 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                                     </svg>
                                 </div>
                                 <span>${trafficText}</span>
