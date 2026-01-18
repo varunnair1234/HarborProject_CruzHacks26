@@ -1110,7 +1110,7 @@
             <div id="auth-success" class="auth-success"></div>
 
             <!-- Login Form -->
-            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event); return false;">
                 <div class="auth-form-group">
                     <label for="login-email">Email</label>
                     <input type="email" id="login-email" required>
@@ -1119,7 +1119,7 @@
                     <label for="login-password">Password</label>
                     <input type="password" id="login-password" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Login</button>
+                <button type="submit" class="btn btn-primary" id="login-btn">Login</button>
             </form>
 
             <!-- Signup Form -->
@@ -1490,6 +1490,33 @@
             };
         }
 
+        // Initialize login form when DOM is ready
+        function initLoginForm() {
+            const loginForm = document.getElementById('login-form');
+            if (loginForm && !loginForm.dataset.initialized) {
+                // Mark as initialized to prevent duplicate listeners
+                loginForm.dataset.initialized = 'true';
+                
+                // Add submit listener
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    console.log('Form submit event triggered');
+                    handleLogin(e);
+                });
+                
+                // Also add click listener to button as backup
+                const loginBtn = loginForm.querySelector('button[type="submit"]');
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        console.log('Login button clicked');
+                        handleLogin(e);
+                    });
+                }
+                console.log('Login form initialized');
+            }
+        }
+
         // Check auth on page load
         function checkAuth() {
             if (isAuthenticated()) {
@@ -1533,11 +1560,20 @@
 
         // Handle login
         async function handleLogin(event) {
-            event.preventDefault();
+            if (event) {
+                event.preventDefault();
+            }
+            console.log('handleLogin called');
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const errorEl = document.getElementById('auth-error');
             const successEl = document.getElementById('auth-success');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter both email and password';
+                errorEl.style.display = 'block';
+                return;
+            }
 
             // Clear previous messages
             errorEl.style.display = 'none';
@@ -1665,6 +1701,15 @@
 
         // Initialize auth check on page load
         checkAuth();
+        
+        // Initialize login form after a short delay to ensure DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initLoginForm, 100);
+            });
+        } else {
+            setTimeout(initLoginForm, 100);
+        }
 
         // ===== Tab Switching =====
         document.querySelectorAll('.tab-button').forEach(btn => {

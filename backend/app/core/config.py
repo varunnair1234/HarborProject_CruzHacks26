@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 from typing import Optional
 from pydantic import Field
 
@@ -9,9 +10,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./harbor.db"
 
     # JWT Authentication
-    secret_key: str = "your-secret-key-change-in-production"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440  # 24 hours
+    secret_key: str = Field(default="dev-secret-change-me", alias="SECRET_KEY")
+    algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
 
     # API Keys
     openrouter_api_key: str
@@ -28,10 +29,6 @@ class Settings(BaseSettings):
     # App Configuration
     app_version: str = "1.0.0"
     environment: str = "development"
-    
-    secret_key: str = Field(default="dev-secret-change-me", alias="SECRET_KEY")
-    algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
-    access_token_expire_minutes: int = Field(default=60 * 24 * 7, alias="ACCESS_TOKEN_EXPIRE_MINUTES")
 
 
     model_config = SettingsConfigDict(
